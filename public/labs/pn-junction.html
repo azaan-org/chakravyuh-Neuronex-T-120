@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>PN Junction Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: lab bench. 3D crystal fills the stage on the left, instrument panel on the right; stacks on phones. Single dark theme by choice (projector-friendly). */
+:root {
+  --ink: #0a0f15;
+  --bench: #111922;
+  --panel: #151f2a;
+  --line: #243242;
+  --fg: #dbe5ee;
+  --muted: #8495a7;
+  --hole: #ff6f5e;
+  --electron: #46b6ff;
+  --acceptor: #b693ff;
+  --donor: #ffb84d;
+  --field: #ffd27a;
+  --ok: #5fd38d;
+  --warn: #ffb84d;
+  --bad: #ff6f5e;
+  --display: "Chakra Petch", "Rajdhani", "Segoe UI", sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--ink); color: var(--fg); font-family: var(--body); font-size: 14px; line-height: 1.5;
+  display: flex; flex-direction: column;
+}
+* { box-sizing: border-box; }
+button, input { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--field); outline-offset: 2px; }
+
+.bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  border-bottom: 1px solid var(--line); background: var(--bench);
+}
+.brand { display: flex; flex-direction: column; min-width: 0; }
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.brand h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: .02em; line-height: 1.15; }
+.brand h1 span { color: var(--hole); }
+.brand h1 em { font-style: normal; color: var(--electron); }
+.tabs { display: flex; gap: 4px; background: var(--ink); padding: 4px; border-radius: 8px; border: 1px solid var(--line); }
+.tabs button { border: 0; background: transparent; padding: 6px 14px; border-radius: 6px; cursor: pointer; color: var(--muted); font-weight: 500; }
+.tabs button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
+
+.app { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 390px; min-height: 0; }
+.stage { position: relative; min-height: 0; background: radial-gradient(120% 90% at 50% 40%, #142130 0%, var(--ink) 70%); overflow: hidden; }
+#gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#gl:active { cursor: grabbing; }
+
+.legend {
+  position: absolute; left: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 6px 12px; max-width: calc(100% - 24px);
+  background: rgba(10,15,21,.78); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; color: var(--muted);
+}
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.legend i.sq { border-radius: 2px; }
+.legend i.ar { width: 14px; height: 2px; border-radius: 0; vertical-align: 3px; }
+.stage-tools { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; align-items: center; }
+.hint { font-size: 12px; color: var(--muted); }
+.chipbtn { background: rgba(10,15,21,.78); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+.chipbtn:hover { border-color: var(--muted); }
+
+.predict {
+  position: absolute; left: 12px; top: 12px; width: min(380px, calc(100% - 24px));
+  background: rgba(17,25,34,.95); border: 1px solid var(--line); border-radius: 10px; padding: 14px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.45); display: flex; flex-direction: column; gap: 10px;
+}
+.predict .step { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--field); }
+.predict h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.35; text-wrap: balance; }
+.opts { display: flex; flex-direction: column; gap: 6px; }
+.opts button {
+  text-align: left; background: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; cursor: pointer;
+}
+.opts button:hover:not(:disabled) { border-color: var(--muted); }
+.opts button:disabled { cursor: default; }
+.opts button.ok { border-color: var(--ok); background: rgba(95,211,141,.08); }
+.opts button.no { border-color: var(--bad); background: rgba(255,111,94,.08); }
+.verdict { font-weight: 600; }
+.verdict.ok { color: var(--ok); }
+.verdict.no { color: var(--bad); }
+.miscon { font-size: 13px; color: var(--muted); }
+.miscon b { color: var(--fg); font-weight: 500; }
+.predict p { margin: 0; font-size: 13.5px; }
+.primary { align-self: flex-start; background: var(--field); color: #1a1406; border: 0; border-radius: 7px; padding: 8px 14px; font-weight: 600; cursor: pointer; }
+
+.panel {
+  overflow-y: auto; border-left: 1px solid var(--line); background: var(--bench);
+  padding-block: 14px 24px; padding-left: 16px; padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 14px;
+}
+.panel > * { flex-shrink: 0; }
+.block { display: flex; flex-direction: column; gap: 8px; }
+.block h3 { margin: 0; font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.slider-row { display: flex; align-items: baseline; justify-content: space-between; }
+.vread { font-family: var(--mono); font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
+#bias { width: 100%; accent-color: var(--field); }
+.scale { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.row { display: flex; gap: 6px; flex-wrap: wrap; }
+.row button {
+  flex: 1 1 auto; background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; cursor: pointer; font-size: 13px;
+}
+.row button:hover { border-color: var(--muted); }
+.row button[aria-pressed="true"] { border-color: var(--field); color: var(--field); }
+.toggles { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.toggles label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.toggles input { accent-color: var(--field); }
+
+.readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.readouts div { background: var(--panel); padding: 8px 10px; min-width: 0; }
+.readouts dt { font-size: 11px; color: var(--muted); }
+.readouts dd { margin: 0; font-family: var(--mono); font-size: 15px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.regime { display: flex; align-items: center; gap: 8px; }
+.pill { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 99px; border: 1px solid currentColor; }
+#explain { margin: 0; font-size: 13.5px; max-width: 65ch; }
+canvas.chart { width: 100%; height: 170px; display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+.sources { display: flex; flex-direction: column; gap: 6px; }
+.src { font-size: 12.5px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+.src b { font-weight: 600; }
+.src span { color: var(--muted); }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; display: flex; flex-direction: column; }
+  .stage { height: 58vh; min-height: 340px; flex: none; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; padding-left: max(16px, env(safe-area-inset-left, 0px)); }
+  body { height: auto; }
+  .hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header class="bar">
+  <div class="brand">
+    <div class="eyebrow">Module 2 · Semiconductor devices</div>
+    <h1><span>P</span><em>N</em> Junction Lab</h1>
+  </div>
+  <div class="tabs" role="group" aria-label="Mode">
+    <button id="tabExplore" aria-pressed="true">Explore</button>
+    <button id="tabPredict" aria-pressed="false">Predict first</button>
+  </div>
+</header>
+
+<div class="app">
+  <section class="stage" aria-label="3D view of a PN junction diode">
+    <canvas id="gl"></canvas>
+    <div class="stage-tools">
+      <span class="hint">Drag to rotate · scroll to zoom</span>
+      <button class="chipbtn" id="resetView">Reset view</button>
+    </div>
+    <div class="legend" aria-label="Legend">
+      <span><i style="background:var(--hole)"></i>Hole</span>
+      <span><i style="background:var(--electron)"></i>Free electron</span>
+      <span><i class="sq" style="background:var(--acceptor)"></i>Acceptor ion (−)</span>
+      <span><i class="sq" style="background:var(--donor)"></i>Donor ion (+)</span>
+      <span><i class="ar" style="background:var(--field)"></i>Electric field</span>
+    </div>
+    <div class="predict" id="predict" hidden></div>
+  </section>
+
+  <aside class="panel">
+    <div class="block">
+      <h3>Bias voltage</h3>
+      <div class="slider-row"><span class="vread" id="vread">0.00 V</span><span class="pill" id="regimePill">Equilibrium</span></div>
+      <input type="range" id="bias" min="-5" max="0.72" step="0.01" value="0" aria-label="Bias voltage in volts">
+      <div class="scale"><span>−5 V reverse</span><span>0</span><span id="vmaxLbl">+0.72 V forward</span></div>
+      <div class="row">
+        <button id="pRev">Reverse −5 V</button>
+        <button id="pZero">0 V</button>
+        <button id="pFwd">Forward 0.7 V</button>
+      </div>
+    </div>
+
+    <div class="block">
+      <h3>Material</h3>
+      <div class="row" role="group" aria-label="Semiconductor material">
+        <button id="mSi" aria-pressed="true">Silicon (Si)</button>
+        <button id="mGe" aria-pressed="false">Germanium (Ge)</button>
+      </div>
+      <div class="toggles">
+        <label><input type="checkbox" id="tField" checked> Field arrows</label>
+        <label><input type="checkbox" id="tIons" checked> Fixed ions</label>
+        <label><input type="checkbox" id="tCircuit" checked> Circuit</label>
+      </div>
+    </div>
+
+    <dl class="readouts">
+      <div><dt>Current I</dt><dd id="rI">0 A</dd></div>
+      <div><dt>Barrier q(V<sub>bi</sub> − V)</dt><dd id="rB">0.70 eV</dd></div>
+      <div><dt>Depletion width W</dt><dd id="rW">0.43 µm</dd></div>
+      <div><dt>Built-in V<sub>bi</sub></dt><dd id="rVbi">0.70 V</dd></div>
+    </dl>
+
+    <div class="block">
+      <h3>What you are seeing</h3>
+      <p id="explain"></p>
+    </div>
+
+    <div class="block">
+      <h3>I–V characteristic</h3>
+      <canvas class="chart" id="ivChart" aria-label="Current versus voltage graph"></canvas>
+      <p class="note" id="ivNote"></p>
+    </div>
+
+    <div class="block">
+      <h3>Energy band diagram</h3>
+      <canvas class="chart" id="bandChart" aria-label="Energy band diagram"></canvas>
+      <p class="note">E<sub>c</sub> conduction band, E<sub>v</sub> valence band, dashed lines are the (quasi-)Fermi levels. Their gap equals qV.</p>
+    </div>
+
+    <div class="block">
+      <h3>Sources</h3>
+      <div class="sources">
+        <div class="src"><b>Boylestad &amp; Nashelsky</b>, Electronic Devices and Circuit Theory <span>· Ch. 1, Semiconductor Diodes</span></div>
+        <div class="src"><b>Streetman &amp; Banerjee</b>, Solid State Electronic Devices <span>· p–n junctions, band diagrams</span></div>
+        <div class="src"><b>Sedra &amp; Smith</b>, Microelectronic Circuits <span>· The pn junction, diode equation</span></div>
+        <div class="src"><span>Model: ideal Shockley diode, n = 1, T = 300 K, N<sub>A</sub> = N<sub>D</sub> = 10¹⁶ cm⁻³, abrupt junction.</span></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+/* ---------- Physics model ---------- */
+const MAT = {
+  Si: { name: 'Silicon', Vbi: 0.70, Is: 1e-14, Eg: 1.12, er: 11.7 },
+  Ge: { name: 'Germanium', Vbi: 0.30, Is: 1e-8, Eg: 0.66, er: 16.0 }
+};
+const VT = 0.025852, VMIN = -5, NDOP = 1e16, Q = 1.602e-19, EPS0 = 8.854e-14;
+let mat = 'Si', V = 0, Vtarget = 0;
+const vmax = () => MAT[mat].Vbi + 0.02;
+const current = v => MAT[mat].Is * (Math.exp(v / VT) - 1);
+const barrier = v => Math.max(MAT[mat].Vbi - v, 0.01);
+const widthUm = v => Math.sqrt(2 * MAT[mat].er * EPS0 * barrier(v) / Q * (2 / NDOP)) * 1e4;
+const widthScene = v => Math.min(8, widthUm(v) * 3.4);
+const flow = v => { const I = current(v); if (I <= 0) return 0; return Math.max(0, Math.min(1, (Math.log10(I) + 5) / 3)); };
+function regime(v) {
+  if (v < -0.02) return 'reverse';
+  if (Math.abs(v) <= 0.02) return 'eq';
+  return flow(v) < 0.2 ? 'knee' : 'on';
+}
+function fmtI(I) {
+  const a = Math.abs(I), s = I < 0 ? '−' : '';
+  if (a < 1e-18) return '0 A';
+  const units = [[1, 'A'], [1e-3, 'mA'], [1e-6, 'µA'], [1e-9, 'nA'], [1e-12, 'pA'], [1e-15, 'fA']];
+  for (const [u, n] of units) if (a >= u) return s + (a / u).toPrecision(3) + ' ' + n;
+  return s + (a / 1e-15).toPrecision(2) + ' fA';
+}
+
+/* ---------- Three.js scene ---------- */
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+if ('outputEncoding' in renderer) renderer.outputEncoding = THREE.sRGBEncoding;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+const sun = new THREE.DirectionalLight(0xffffff, 0.9); sun.position.set(4, 8, 6); scene.add(sun);
+
+const C = n => new THREE.Color(n);
+const COL = { hole: C(0xff6f5e), e: C(0x46b6ff), acc: C(0xb693ff), don: C(0xffb84d), dim: C(0x334252), field: C(0xffd27a) };
+
+// Crystal halves
+const L = 10, H = 3, D = 3;
+function half(color, x) {
+  const g = new THREE.BoxGeometry(L / 2, H, D);
+  const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color, transparent: true, opacity: 0.07, depthWrite: false }));
+  m.position.x = x; scene.add(m);
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55 }));
+  e.position.x = x; scene.add(e);
+}
+half(0xff6f5e, -L / 4); half(0x46b6ff, L / 4);
+
+// Depletion region volume + edges
+const depl = new THREE.Mesh(new THREE.BoxGeometry(1, H + 0.02, D + 0.02),
+  new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.07, depthWrite: false }));
+scene.add(depl);
+const edgeMat = new THREE.MeshBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide });
+const edgeL = new THREE.Mesh(new THREE.PlaneGeometry(D, H), edgeMat); edgeL.rotation.y = Math.PI / 2; scene.add(edgeL);
+const edgeR = edgeL.clone(); scene.add(edgeR);
+
+// Metal contacts
+const plateMat = new THREE.MeshStandardMaterial({ color: 0x9aa7b4, metalness: 0.6, roughness: 0.35 });
+const plateL = new THREE.Mesh(new THREE.BoxGeometry(0.16, H + 0.2, D + 0.2), plateMat); plateL.position.x = -L / 2 - 0.08; scene.add(plateL);
+const plateR = plateL.clone(); plateR.position.x = L / 2 + 0.08; scene.add(plateR);
+
+// Fixed ions (lattice dopants)
+const ionPos = [];
+for (let x = -4.75; x <= 4.76; x += 0.5) for (const y of [-1, 0, 1]) for (const z of [-1, 0, 1]) ionPos.push([x, y, z]);
+const ions = new THREE.InstancedMesh(new THREE.BoxGeometry(0.13, 0.13, 0.13), new THREE.MeshStandardMaterial({ color: 0xffffff }), ionPos.length);
+const tmp = new THREE.Object3D();
+ionPos.forEach((p, i) => { tmp.position.set(...p); tmp.updateMatrix(); ions.setMatrixAt(i, tmp.matrix); ions.setColorAt(i, COL.dim); });
+scene.add(ions);
+
+// Mobile carriers
+const NC = 190;
+const sphere = new THREE.SphereGeometry(0.085, 12, 9);
+function carrierMesh(color, n) {
+  const m = new THREE.InstancedMesh(sphere, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.45, roughness: 0.4 }), n);
+  m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(m); return m;
+}
+const holeMesh = carrierMesh(0xff6f5e, NC), eMesh = carrierMesh(0x46b6ff, NC);
+const genH = carrierMesh(0xff6f5e, 16), genE = carrierMesh(0x46b6ff, 16);
+const rnd = (a, b) => a + Math.random() * (b - a);
+function makeCarriers(sign) { // sign -1: holes on P (left), +1: electrons on N (right)
+  const c = { x: new Float32Array(NC), y: new Float32Array(NC), z: new Float32Array(NC), st: new Uint8Array(NC), life: new Float32Array(NC) };
+  for (let i = 0; i < NC; i++) { c.x[i] = sign * rnd(0.9, 4.95); c.y[i] = rnd(-1.35, 1.35); c.z[i] = rnd(-1.35, 1.35); }
+  return c;
+}
+const holes = makeCarriers(-1), elec = makeCarriers(1);
+const gen = Array.from({ length: 16 }, () => ({ on: false, ex: 0, hx: 0, y: 0, z: 0, t: 0 }));
+
+// Recombination flashes
+function glowTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,250,220,1)'); gr.addColorStop(0.35, 'rgba(255,210,122,.7)'); gr.addColorStop(1, 'rgba(255,210,122,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c);
+}
+const glowTex = glowTexture();
+const flashes = Array.from({ length: 40 }, () => {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  s.visible = false; s.userData.t = 0; scene.add(s); return s;
+});
+let flashIdx = 0;
+function flash(x, y, z) { const s = flashes[flashIdx++ % flashes.length]; s.position.set(x, y, z); s.userData.t = 0.5; s.visible = true; }
+
+// Text labels as sprites
+function label(text, color, h = 0.45) {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 128;
+  const g = c.getContext('2d'); const tex = new THREE.CanvasTexture(c);
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false }));
+  spr.renderOrder = 10;
+  spr.scale.set(h * 8, h, 1); scene.add(spr);
+  let last = null;
+  const api = {
+    sprite: spr,
+    set(t, col = color) {
+      if (t === last) return; last = t;
+      g.clearRect(0, 0, 1024, 128);
+      g.font = '600 72px "Chakra Petch", "Segoe UI", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = col; g.fillText(t, 512, 66); tex.needsUpdate = true;
+    }
+  };
+  api.set(text); return api;
+}
+const lblP = label('P-type · anode', '#ff8a7b'); lblP.sprite.position.set(-2.5, 2.0, 0);
+const lblN = label('N-type · cathode', '#6cc4ff'); lblN.sprite.position.set(2.5, 2.0, 0);
+const lblW = label('', '#ffd27a', 0.38); lblW.sprite.position.set(0, -2.05, 0);
+
+// Field arrows (point from + donors to − acceptors: N → P)
+const arrows = [-0.9, 0, 0.9].map(y => {
+  const a = new THREE.ArrowHelper(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, y, 1.62), 1, 0xffd27a, 0.3, 0.18);
+  scene.add(a); return a;
+});
+
+// External circuit: battery + wires
+const circuit = new THREE.Group(); scene.add(circuit);
+const wireMat = new THREE.MeshStandardMaterial({ color: 0x8794a2, metalness: 0.5, roughness: 0.4 });
+const WY = 3.35, PX = L / 2 + 0.08, BX = 0.85;
+const path = [[-PX, 1.6], [-PX, WY], [-BX, WY], [BX, WY], [PX, WY], [PX, 1.6]];
+function seg(a, b) {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(len + 0.06, 0.06, 0.06), wireMat);
+  m.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, 0); m.rotation.z = Math.atan2(b[1] - a[1], b[0] - a[0]); circuit.add(m);
+}
+seg(path[0], path[1]); seg(path[1], path[2]); seg(path[3], path[4]); seg(path[4], path[5]);
+const batt = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 2 * BX, 28), new THREE.MeshStandardMaterial({ color: 0x2a3644, roughness: 0.5 }));
+batt.rotation.z = Math.PI / 2; batt.position.y = WY; circuit.add(batt);
+const capMatL = new THREE.MeshStandardMaterial({ color: 0x777777 }), capMatR = new THREE.MeshStandardMaterial({ color: 0x777777 });
+const capL = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.12, 28), capMatL); capL.rotation.z = Math.PI / 2; capL.position.set(-BX + 0.06, WY, 0); circuit.add(capL);
+const capR = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.12, 28), capMatR); capR.rotation.z = Math.PI / 2; capR.position.set(BX - 0.06, WY, 0); circuit.add(capR);
+const lblBL = label('', '#fff', 0.55), lblBR = label('', '#fff', 0.55), lblBV = label('', '#dbe5ee', 0.4);
+lblBL.sprite.position.set(-1.35, WY + 0.55, 0); lblBR.sprite.position.set(1.35, WY + 0.55, 0); lblBV.sprite.position.set(0, WY + 0.75, 0);
+circuit.add(lblBL.sprite, lblBR.sprite, lblBV.sprite);
+// electrons drifting in the wire
+const wirePts = [path[0], path[1], path[2], null, path[3], path[4], path[5]];
+const wsegs = []; let wlen = 0;
+[[0, 1], [1, 2], [3, 4], [4, 5]].forEach(([i, j]) => { const a = path[i], b = path[j]; const l = Math.hypot(b[0] - a[0], b[1] - a[1]); wsegs.push({ a, b, l, s0: wlen }); wlen += l; });
+const ND = 28; let wOffset = 0;
+const wireE = new THREE.InstancedMesh(new THREE.SphereGeometry(0.06, 8, 6), new THREE.MeshBasicMaterial({ color: 0x46b6ff }), ND);
+circuit.add(wireE);
+function wirePoint(s) {
+  s = ((s % wlen) + wlen) % wlen;
+  for (const g of wsegs) if (s <= g.s0 + g.l) { const t = (s - g.s0) / g.l; return [g.a[0] + (g.b[0] - g.a[0]) * t, g.a[1] + (g.b[1] - g.a[1]) * t]; }
+  return path[5];
+}
+
+/* ---------- Camera orbit ---------- */
+const cam = { r: 14, th: -0.42, ph: 1.12, ty: 0.7 };
+function defaultView() { const a = canvas.clientWidth / Math.max(1, canvas.clientHeight); cam.r = a < 1 ? 19 : a < 1.4 ? 16 : 14; cam.th = -0.42; cam.ph = 1.12; }
+function placeCam() {
+  camera.position.set(cam.r * Math.sin(cam.ph) * Math.sin(cam.th), cam.ty + cam.r * Math.cos(cam.ph), cam.r * Math.sin(cam.ph) * Math.cos(cam.th));
+  camera.lookAt(0, cam.ty, 0);
+}
+let drag = null;
+canvas.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  cam.th -= (e.clientX - drag.x) * 0.007; cam.ph = Math.max(0.35, Math.min(1.55, cam.ph - (e.clientY - drag.y) * 0.007));
+  drag = { x: e.clientX, y: e.clientY };
+});
+canvas.addEventListener('pointerup', () => drag = null);
+canvas.addEventListener('pointercancel', () => drag = null);
+canvas.addEventListener('wheel', e => { e.preventDefault(); cam.r = Math.max(7, Math.min(30, cam.r * (1 + e.deltaY * 0.001))); }, { passive: false });
+document.getElementById('resetView').onclick = defaultView;
+
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h) return;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+new ResizeObserver(() => { resize(); drawCharts(); }).observe(canvas.parentElement);
+
+/* ---------- Simulation step ---------- */
+let genClock = 0;
+function stepCarriers(c, sign, dt, f, W) {
+  const edge = sign * W / 2;           // P side edge is -W/2, N side edge +W/2
+  const drift = f * 3.4;               // toward the junction in forward bias
+  for (let i = 0; i < NC; i++) {
+    c.x[i] += (Math.random() - 0.5) * 2.6 * dt * 6 * 0.18;
+    c.y[i] += (Math.random() - 0.5) * 1.0 * dt * 6 * 0.18;
+    c.z[i] += (Math.random() - 0.5) * 1.0 * dt * 6 * 0.18;
+    if (c.st[i] === 0) {
+      c.x[i] -= sign * drift * dt;
+      const inside = sign < 0 ? c.x[i] > edge : c.x[i] < edge;
+      if (inside) {
+        if (f > 0.01 && Math.random() < f * 0.5) { c.st[i] = 1; c.life[i] = rnd(0.25, 1.1); }
+        else { const d = Math.abs(c.x[i] - edge); c.x[i] += sign * (2.5 + 7 * d) * dt; }
+      }
+    } else {
+      c.x[i] -= sign * (0.7 + drift * 0.55) * dt;
+      c.life[i] -= dt;
+      if (c.life[i] <= 0 || Math.abs(c.x[i]) > 4.9) {
+        flash(c.x[i], c.y[i], c.z[i]);
+        c.st[i] = 0; c.x[i] = sign * 4.95; c.y[i] = rnd(-1.35, 1.35); c.z[i] = rnd(-1.35, 1.35);
+      }
+    }
+    if (sign < 0 && c.x[i] < -4.95) c.x[i] = -4.95 + Math.random() * 0.05;
+    if (sign > 0 && c.x[i] > 4.95) c.x[i] = 4.95 - Math.random() * 0.05;
+    c.y[i] = Math.max(-1.4, Math.min(1.4, c.y[i])); c.z[i] = Math.max(-1.4, Math.min(1.4, c.z[i]));
+  }
+}
+function writeCarriers(mesh, c) {
+  for (let i = 0; i < NC; i++) { tmp.position.set(c.x[i], c.y[i], c.z[i]); tmp.scale.setScalar(1); tmp.updateMatrix(); mesh.setMatrixAt(i, tmp.matrix); }
+  mesh.instanceMatrix.needsUpdate = true;
+}
+
+let showField = true, showIons = true;
+function updateScene(dt) {
+  const W = widthScene(V), f = flow(V), b = barrier(V), r = regime(V);
+  depl.scale.x = W; edgeL.position.x = -W / 2; edgeR.position.x = W / 2;
+  edgeMat.opacity = 0.12 + 0.3 * Math.min(1, W / 1.5);
+  // ions: uncovered inside depletion region
+  for (let i = 0; i < ionPos.length; i++) {
+    const x = ionPos[i][0], inD = Math.abs(x) <= W / 2;
+    tmp.position.set(...ionPos[i]); tmp.scale.setScalar(inD ? 1.35 : 0.85); tmp.updateMatrix(); ions.setMatrixAt(i, tmp.matrix);
+    ions.setColorAt(i, inD ? (x < 0 ? COL.acc : COL.don) : COL.dim);
+  }
+  ions.instanceMatrix.needsUpdate = true; if (ions.instanceColor) ions.instanceColor.needsUpdate = true;
+  ions.visible = showIons;
+  // field arrows
+  const fieldStrength = Math.min(1, b / W / 1.2);
+  arrows.forEach(a => {
+    const len = Math.max(0.05, W * 0.92); a.position.x = len / 2; a.setLength(len, Math.min(0.32, len * 0.4), 0.18);
+    a.visible = showField && W > 0.35;
+    a.line.material.transparent = a.cone.material.transparent = true;
+    a.line.material.opacity = a.cone.material.opacity = 0.35 + 0.65 * fieldStrength;
+  });
+  // carriers
+  stepCarriers(holes, -1, dt, f, W); stepCarriers(elec, 1, dt, f, W);
+  writeCarriers(holeMesh, holes); writeCarriers(eMesh, elec);
+  // thermally generated pairs (leakage) in reverse bias
+  if (r === 'reverse') { genClock += dt * 1.6; while (genClock > 1) { genClock -= 1; const g = gen.find(q => !q.on); if (g) Object.assign(g, { on: true, ex: rnd(-W / 2, W / 2), y: rnd(-1.2, 1.2), z: rnd(-1.2, 1.2), t: 0 }), g.hx = g.ex; } }
+  gen.forEach((g, i) => {
+    if (g.on) { g.t += dt; g.ex += 3 * dt; g.hx -= 3 * dt; if (g.ex > W / 2 + 0.8) g.on = false; }
+    tmp.scale.setScalar(g.on ? 0.8 : 0);
+    tmp.position.set(g.ex, g.y, g.z); tmp.updateMatrix(); genE.setMatrixAt(i, tmp.matrix);
+    tmp.position.set(g.hx, g.y, g.z); tmp.updateMatrix(); genH.setMatrixAt(i, tmp.matrix);
+  });
+  genE.instanceMatrix.needsUpdate = genH.instanceMatrix.needsUpdate = true;
+  // flashes
+  flashes.forEach(s => { if (!s.visible) return; s.userData.t -= dt; const k = s.userData.t / 0.5; if (k <= 0) { s.visible = false; return; } s.scale.setScalar(0.25 + (1 - k) * 0.6); s.material.opacity = k; });
+  // battery
+  const fwd = V > 0.005, rev = V < -0.005;
+  capMatL.color.set(fwd ? 0xff6f5e : rev ? 0x46b6ff : 0x777777); capMatR.color.set(fwd ? 0x46b6ff : rev ? 0xff6f5e : 0x777777);
+  lblBL.set(fwd ? '+' : rev ? '−' : '', fwd ? '#ff8a7b' : '#6cc4ff');
+  lblBR.set(fwd ? '−' : rev ? '+' : '', fwd ? '#6cc4ff' : '#ff8a7b');
+  lblBV.set(Math.abs(V) < 0.005 ? '0 V (open)' : Math.abs(V).toFixed(2) + ' V');
+  // wire electrons: forward bias → electrons enter N contact, leave P contact
+  wOffset += f * 2.2 * dt;
+  for (let i = 0; i < ND; i++) { const p = wirePoint(wOffset + i * wlen / ND); tmp.position.set(p[0], p[1], 0); tmp.scale.setScalar(1); tmp.updateMatrix(); wireE.setMatrixAt(i, tmp.matrix); }
+  wireE.instanceMatrix.needsUpdate = true;
+  lblW.set('Depletion region  W = ' + widthUm(V).toFixed(2) + ' µm');
+}
+
+/* ---------- Panel ---------- */
+const $ = id => document.getElementById(id);
+const REG = {
+  eq: { name: 'Equilibrium', color: 'var(--muted)', text: 'No battery voltage. Holes diffused right and electrons diffused left until the fixed ions they left behind built an electric field strong enough to stop them. Diffusion and drift now balance, so the net current is zero.' },
+  knee: { name: 'Below knee', color: 'var(--warn)', text: 'Forward bias lowers the barrier from Vbi to Vbi − V and the depletion region narrows. But only a trickle of carriers can climb the remaining barrier, so the current is still tiny. A diode does not switch on at 0 V.' },
+  on: { name: 'Conducting', color: 'var(--ok)', text: 'The barrier is now low enough for majority carriers to cross in large numbers. Holes enter the N side and electrons enter the P side, where they recombine (the flashes). Current grows exponentially: about 60 mV more multiplies it by 10.' },
+  reverse: { name: 'Reverse bias', color: 'var(--electron)', text: 'The battery pulls holes toward the anode contact and electrons toward the cathode contact. More fixed ions are uncovered, so the depletion region widens and the barrier grows to Vbi + |V|. Only heat-generated electron–hole pairs (the small pairs you see split apart) carry a tiny leakage current.' }
+};
+let lastReg = null;
+function updatePanel() {
+  const m = MAT[mat], I = current(V), r = regime(V);
+  $('vread').textContent = (V > 0 ? '+' : V < 0 ? '−' : '') + Math.abs(V).toFixed(2) + ' V';
+  $('rI').textContent = fmtI(I);
+  $('rB').textContent = (m.Vbi - V > 0.01 ? (m.Vbi - V).toFixed(2) : '≈ 0') + ' eV';
+  $('rW').textContent = widthUm(V).toFixed(2) + ' µm';
+  $('rVbi').textContent = m.Vbi.toFixed(2) + ' V';
+  if (r !== lastReg) {
+    lastReg = r; const p = $('regimePill'); p.textContent = REG[r].name; p.style.color = REG[r].color;
+    $('explain').textContent = REG[r].text;
+  }
+}
+
+/* ---------- Charts ---------- */
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function prep(cv) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight;
+  if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h); return [g, w, h];
+}
+function drawIV() {
+  const cv = $('ivChart'); if (!cv.clientWidth) return; const [g, w, h] = prep(cv);
+  const muted = cssVar('--muted'), line = cssVar('--line'), fg = cssVar('--fg');
+  const pl = 40, pr = 12, pt = 14, pb = 24, vM = vmax();
+  const Imax = current(vM) * 1000 * 1.12, Imin = -Imax * 0.08;
+  const sx = v => pl + (v - VMIN) / (vM - VMIN) * (w - pl - pr);
+  const sy = i => pt + (Imax - i) / (Imax - Imin) * (h - pt - pb);
+  g.font = '11px ' + cssVar('--mono'); g.lineWidth = 1;
+  g.strokeStyle = line; g.fillStyle = muted;
+  for (let v = -5; v <= 0; v++) { g.beginPath(); g.moveTo(sx(v), pt); g.lineTo(sx(v), h - pb); g.stroke(); g.textAlign = 'center'; g.fillText(v === 0 ? '0' : '−' + (-v), sx(v), h - 8); }
+  g.textAlign = 'center'; g.fillText('V', w - pr - 4, h - 8);
+  g.beginPath(); g.moveTo(pl, sy(0)); g.lineTo(w - pr, sy(0)); g.strokeStyle = muted; g.stroke();
+  const top = Math.floor(Imax / 1.12); g.textAlign = 'right'; g.fillText(top + ' mA', pl - 4, sy(top) + 4); g.fillText('0', pl - 4, sy(0) + 4);
+  g.setLineDash([3, 3]); g.strokeStyle = line; g.beginPath(); g.moveTo(pl, sy(top)); g.lineTo(w - pr, sy(top)); g.stroke();
+  // knee marker
+  const vb = MAT[mat].Vbi; g.strokeStyle = cssVar('--field'); g.globalAlpha = 0.6; g.beginPath(); g.moveTo(sx(vb), pt); g.lineTo(sx(vb), h - pb); g.stroke(); g.globalAlpha = 1; g.setLineDash([]);
+  g.fillStyle = cssVar('--field'); g.textAlign = 'right'; g.fillText('knee ≈ ' + vb.toFixed(1) + ' V', sx(vb) - 6, pt + 10);
+  // curve
+  g.beginPath(); g.strokeStyle = fg; g.lineWidth = 2;
+  for (let k = 0; k <= 400; k++) { const v = VMIN + (vM - VMIN) * k / 400, y = sy(current(v) * 1000); k ? g.lineTo(sx(v), y) : g.moveTo(sx(v), y); }
+  g.stroke();
+  // live point
+  const px = sx(V), py = sy(current(V) * 1000);
+  g.beginPath(); g.arc(px, py, 5.5, 0, Math.PI * 2); g.fillStyle = cssVar('--field'); g.fill();
+  g.beginPath(); g.arc(px, py, 9, 0, Math.PI * 2); g.strokeStyle = cssVar('--field'); g.globalAlpha = 0.4; g.lineWidth = 2; g.stroke(); g.globalAlpha = 1;
+  $('ivNote').textContent = 'Reverse current here is about ' + fmtI(MAT[mat].Is) + ', far too small to see on this scale. The curve hugs zero until the knee, then rises exponentially.';
+}
+function drawBand() {
+  const cv = $('bandChart'); if (!cv.clientWidth) return; const [g, w, h] = prep(cv);
+  const m = MAT[mat], dv = barrier(V), half = widthScene(V) / 2, Eg = m.Eg, dn = (Eg - m.Vbi) / 2;
+  const Ec = x => x <= -half ? dv : x >= half ? 0 : x <= 0 ? dv - dv / 2 * ((x + half) / half) ** 2 : dv / 2 * ((half - x) / half) ** 2;
+  const top = dv + 0.3, bot = -Eg - 0.3;
+  const pl = 28, pr = 74, pt = 10, pb = 18;
+  const sx = x => pl + (x + 5) / 10 * (w - pl - pr), sy = E => pt + (top - E) / (top - bot) * (h - pt - pb);
+  g.font = '11px ' + cssVar('--mono');
+  // depletion shading
+  g.fillStyle = 'rgba(255,210,122,.08)'; g.fillRect(sx(-half), pt, sx(half) - sx(-half), h - pt - pb);
+  const curve = (fn, col, dash) => { g.beginPath(); g.setLineDash(dash || []); g.strokeStyle = col; g.lineWidth = 2; for (let k = 0; k <= 240; k++) { const x = -5 + 10 * k / 240; k ? g.lineTo(sx(x), sy(fn(x))) : g.moveTo(sx(x), sy(fn(x))); } g.stroke(); g.setLineDash([]); };
+  curve(Ec, cssVar('--electron'));
+  curve(x => Ec(x) - Eg, cssVar('--hole'));
+  // quasi-Fermi levels
+  const EFn = -dn, EFp = dv - Eg + dn;
+  g.setLineDash([4, 4]); g.lineWidth = 1.2; g.strokeStyle = cssVar('--muted');
+  g.beginPath(); g.moveTo(sx(-half), sy(EFn)); g.lineTo(sx(5), sy(EFn)); g.stroke();
+  g.beginPath(); g.moveTo(sx(-5), sy(EFp)); g.lineTo(sx(half), sy(EFp)); g.stroke(); g.setLineDash([]);
+  // carriers
+  g.fillStyle = cssVar('--electron'); for (let x = half + 0.4; x < 4.8; x += 0.55) { g.beginPath(); g.arc(sx(x), sy(0) - 5, 2.6, 0, 7); g.fill(); }
+  g.fillStyle = cssVar('--hole'); for (let x = -half - 0.4; x > -4.8; x -= 0.55) { g.beginPath(); g.arc(sx(x), sy(dv - Eg) + 5, 2.6, 0, 7); g.fill(); }
+  // labels
+  g.textAlign = 'left'; g.fillStyle = cssVar('--electron'); g.fillText('Ec', w - pr + 6, sy(0) + 4);
+  g.fillStyle = cssVar('--hole'); g.fillText('Ev', w - pr + 6, sy(-Eg) + 4);
+  g.fillStyle = cssVar('--muted'); g.fillText('EF', w - pr + 6, sy(EFn) + 4);
+  g.fillStyle = cssVar('--fg'); g.textAlign = 'center'; g.fillText('P', sx(-4), h - 4); g.fillText('N', sx(4), h - 4);
+  // barrier bracket
+  const bx = sx(half) + 10; g.strokeStyle = cssVar('--field'); g.lineWidth = 1.5;
+  g.beginPath(); g.moveTo(bx, sy(dv)); g.lineTo(bx, sy(0)); g.moveTo(bx - 4, sy(dv)); g.lineTo(bx + 4, sy(dv)); g.moveTo(bx - 4, sy(0)); g.lineTo(bx + 4, sy(0)); g.stroke();
+  g.fillStyle = cssVar('--field'); g.textAlign = 'left';
+  g.fillText('barrier ' + (m.Vbi - V > 0.01 ? (m.Vbi - V).toFixed(2) : '≈0') + ' eV', Math.min(bx + 6, w - pr - 70), Math.max(pt + 10, (sy(dv) + sy(0)) / 2 + 4));
+  if (Math.abs(V) > 0.04) { g.fillStyle = cssVar('--muted'); g.fillText('qV = ' + Math.abs(V).toFixed(2) + ' eV', w - pr + 6, sy((EFn + EFp) / 2) + 4); }
+}
+let chartDirty = true;
+function drawCharts() { drawIV(); drawBand(); chartDirty = false; }
+
+/* ---------- Controls ---------- */
+const slider = $('bias');
+function setTarget(v) { Vtarget = Math.max(VMIN, Math.min(vmax(), v)); slider.value = Vtarget.toFixed(2); }
+slider.addEventListener('input', () => { Vtarget = parseFloat(slider.value); });
+$('pRev').onclick = () => setTarget(-5);
+$('pZero').onclick = () => setTarget(0);
+$('pFwd').onclick = () => setTarget(MAT[mat].Vbi);
+function setMat(k) {
+  mat = k; $('mSi').setAttribute('aria-pressed', k === 'Si'); $('mGe').setAttribute('aria-pressed', k === 'Ge');
+  slider.max = vmax().toFixed(2); $('vmaxLbl').textContent = '+' + vmax().toFixed(2) + ' V forward';
+  $('pFwd').textContent = 'Forward ' + MAT[k].Vbi.toFixed(1) + ' V';
+  setTarget(Math.min(Vtarget, vmax())); lastReg = null; chartDirty = true;
+}
+$('mSi').onclick = () => setMat('Si'); $('mGe').onclick = () => setMat('Ge');
+$('tField').onchange = e => showField = e.target.checked;
+$('tIons').onchange = e => showIons = e.target.checked;
+$('tCircuit').onchange = e => circuit.visible = e.target.checked;
+
+/* ---------- Predict → Observe → Explain ---------- */
+const QUESTIONS = [
+  { id: 'reverse-width', v: -3, q: 'You connect the battery in reverse at −3\u00a0V. What happens to the depletion region?',
+    opts: [{ t: 'It gets wider', ok: true }, { t: 'It gets narrower', mis: 'Reverse bias pushes carriers into the junction' }, { t: 'It stays the same width', mis: 'Depletion width is fixed by the material' }],
+    explain: 'The battery pulls holes toward the anode contact and electrons toward the cathode contact. That uncovers more fixed ions, so the depletion region widens and the barrier grows from 0.7 V to 3.7 V.' },
+  { id: 'forward-knee', v: 0.3, q: 'A silicon diode gets a forward bias of 0.3\u00a0V. How much current flows?',
+    opts: [{ t: 'A large current, like a closed switch', mis: 'A diode conducts fully as soon as it is forward biased' }, { t: 'Almost none, it is below the knee', ok: true }, { t: 'Exactly zero', mis: 'Current is zero until a fixed threshold, then jumps on' }],
+    explain: 'Current grows exponentially with voltage. At 0.3 V this silicon diode passes only about 1 nA. It takes roughly 0.6 to 0.7 V before the current reaches milliamps.' },
+  { id: 'reverse-current', v: -5, q: 'Reverse bias at −5\u00a0V. What current flows through the diode?',
+    opts: [{ t: 'Exactly zero, it is a perfect open circuit', mis: 'A reverse-biased diode blocks all current' }, { t: 'A tiny leakage current', ok: true }, { t: 'A large current in the reverse direction', mis: 'Reversing the battery reverses the current' }],
+    explain: 'Heat keeps creating electron–hole pairs inside the depletion region, and the field sweeps them across. That is the saturation current: about 10 fA in this model, usually nanoamps in a real diode, and it roughly doubles for every 10 °C rise.' }
+];
+const box = $('predict');
+let qi = 0, results = [];
+function emit(msg) { try { if (window.parent !== window) window.parent.postMessage(Object.assign({ source: 'pulse-lab', lab: 'pn-junction' }, msg), '*'); } catch (e) {} }
+function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function showQuestion() {
+  const Qn = QUESTIONS[qi];
+  box.innerHTML = '<div class="step">Predict · ' + (qi + 1) + ' of ' + QUESTIONS.length + '</div><h2>' + esc(Qn.q) + '</h2><div class="opts">' +
+    Qn.opts.map((o, i) => '<button data-i="' + i + '">' + esc(o.t) + '</button>').join('') + '</div><div id="fb"></div>';
+  box.querySelectorAll('.opts button').forEach(b => b.onclick = () => answer(+b.dataset.i));
+}
+function answer(i) {
+  const Qn = QUESTIONS[qi], o = Qn.opts[i], btns = box.querySelectorAll('.opts button');
+  btns.forEach((b, k) => { b.disabled = true; if (Qn.opts[k].ok) b.classList.add('ok'); else if (k === i) b.classList.add('no'); });
+  const rec = { question: Qn.id, choice: o.t, correct: !!o.ok, misconception: o.mis || null };
+  results.push(rec); emit(Object.assign({ type: 'prediction' }, rec));
+  setTarget(Qn.v); // observe
+  $('fb').innerHTML = (o.ok ? '<div class="verdict ok">Correct. Watch the junction.</div>'
+    : '<div class="verdict no">Not quite. Watch what really happens.</div><div class="miscon">Misconception detected: <b>' + esc(o.mis) + '</b></div>') +
+    '<p>' + esc(Qn.explain) + '</p><button class="primary" id="next">' + (qi < QUESTIONS.length - 1 ? 'Next question' : 'See summary') + '</button>';
+  $('next').onclick = () => { qi++; if (qi < QUESTIONS.length) { setTarget(0); showQuestion(); } else summary(); };
+}
+function summary() {
+  const ok = results.filter(r => r.correct).length, mis = results.filter(r => r.misconception);
+  emit({ type: 'summary', score: ok, total: results.length, misconceptions: mis.map(r => r.misconception) });
+  box.innerHTML = '<div class="step">Summary</div><h2>' + ok + ' of ' + results.length + ' predictions correct</h2>' +
+    (mis.length ? '<div class="miscon">Misconceptions to revisit:</div><div class="opts">' + mis.map(r => '<button disabled class="no">' + esc(r.misconception) + '</button>').join('') + '</div>'
+      : '<p>No misconceptions detected on this topic.</p>') +
+    '<button class="primary" id="again">Explore freely</button>';
+  $('again').onclick = () => setMode('explore');
+}
+function setMode(m) {
+  $('tabExplore').setAttribute('aria-pressed', m === 'explore'); $('tabPredict').setAttribute('aria-pressed', m === 'predict');
+  if (m === 'predict') { setMat('Si'); setTarget(0); qi = 0; results = []; box.hidden = false; showQuestion(); }
+  else box.hidden = true;
+}
+$('tabExplore').onclick = () => setMode('explore');
+$('tabPredict').onclick = () => setMode('predict');
+
+/* ---------- Embedding API (for the slide-matching platform) ---------- */
+window.addEventListener('message', e => {
+  const d = e.data || {};
+  if (d.type === 'setBias' && typeof d.value === 'number') setTarget(d.value);
+  if (d.type === 'setMaterial' && MAT[d.value]) setMat(d.value);
+  if (d.type === 'startPredict') setMode('predict');
+});
+try {
+  const p = new URLSearchParams(location.search);
+  if (MAT[p.get('material')]) setMat(p.get('material'));
+  if (p.has('v')) { setTarget(parseFloat(p.get('v')) || 0); V = Vtarget; }
+  if (p.get('mode') === 'predict') setMode('predict');
+} catch (e) {}
+
+/* ---------- Loop ---------- */
+resize(); defaultView(); updatePanel(); drawCharts();
+let last = performance.now(), lastV = null, stateDirty = true, lastState = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  V += (Vtarget - V) * Math.min(1, dt * 4); if (Math.abs(Vtarget - V) < 0.002) V = Vtarget;
+  updateScene(dt);
+  if (V !== lastV || chartDirty) { updatePanel(); drawCharts(); lastV = V; stateDirty = true; }
+  if (stateDirty && now - lastState > 400) { stateDirty = false; lastState = now; emit({ type: 'state', state: { biasV: +V.toFixed(2), current: fmtI(current(V)), regime: REG[regime(V)].name, material: MAT[mat].name, depletionWidthUm: +widthUm(V).toFixed(2), barrierEV: +Math.max(MAT[mat].Vbi - V, 0).toFixed(2) } }); }
+  placeCam(); renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { chartDirty = true; [lblP, lblN].forEach(l => { const t = l === lblP ? 'P-type · anode' : 'N-type · cathode'; l.set(''); l.set(t); }); });
+})();
+</script>
+
+</html>
