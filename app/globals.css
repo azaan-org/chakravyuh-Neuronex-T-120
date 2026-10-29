@@ -80,3 +80,11 @@ input.field:focus, textarea.field:focus { border-color: var(--muted); outline: n
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 @media (max-width: 1150px) { .lms { display: none; } }
+
+/* Circuit workbench board */
+.board { width: 100%; height: auto; display: block; border-radius: 12px; touch-action: manipulation; user-select: none; }
+.board .term, .board .wire, .board .flip { cursor: pointer; }
+.board .wire:hover path:nth-child(2) { stroke-width: 6; }
+.board .flip:hover rect { stroke: #ffd27a; }
+.pulse-ring { animation: pulseRing 1.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes pulseRing { 0% { transform: scale(.8); opacity: 1; } 100% { transform: scale(1.7); opacity: 0; } }

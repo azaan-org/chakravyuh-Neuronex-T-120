@@ -1,95 +1,84 @@
 'use client';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { MODULES, LAB_LIST } from '@/lib/labs';
-import { getProgress, summarize, getProfile, setProfile, resetProgress } from '@/lib/progress';
-import { ProfileModal } from '@/components/Nav';
+import { useRouter } from 'next/navigation';
 import Hero3D from '@/components/Hero3D';
-import s from './home.module.css';
+import { SUBJECTS, chaptersOf } from '@/lib/curriculum';
+import { getProfile, getProgress } from '@/lib/progress';
+import s from './curriculum.module.css';
 
-export default function Home() {
-  const [sum, setSum] = useState(null);
-  const [prog, setProg] = useState(null);
+export default function Curriculum() {
+  const router = useRouter();
   const [prof, setProf] = useState(null);
-  const [ask, setAsk] = useState(false);
+  const [prog, setProg] = useState(null);
+  const [mats, setMats] = useState([]);
   useEffect(() => {
-    try { const c = new URLSearchParams(location.search).get('class'); if (c) setProfile({ classCode: c.toUpperCase() }); } catch {}
-    const sync = () => { const p = getProgress(); setProg(p); setSum(summarize(p)); setProf(getProfile()); };
-    sync(); window.addEventListener('pulse-progress', sync);
-    if (!getProfile().name) setAsk(true);
-    return () => window.removeEventListener('pulse-progress', sync);
-  }, []);
+    const p = getProfile();
+    if (!p.name) { router.replace('/login'); return; }
+    if (p.role === 'professor') { router.replace('/professor'); return; }
+    setProf(p); setProg(getProgress());
+    fetch('/api/materials', { cache: 'no-store' }).then(r => r.json()).then(j => setMats(j.items || [])).catch(() => {});
+  }, [router]);
+  if (!prof) return null;
 
-  const status = id => { const l = prog?.labs[id]; return !l ? 'new' : l.done ? 'done' : 'started'; };
-  const STATUS = { new: ['Not started', 'var(--muted)'], started: ['In progress', 'var(--warn)'], done: ['Completed', 'var(--ok)'] };
+  const chOpened = id => prog?.chapters?.[id];
+  const all = SUBJECTS.flatMap(x => chaptersOf(x.id));
+  const started = all.filter(c => chOpened(c.id)).length;
+  const next = all.find(c => !chOpened(c.id)) || all[0];
 
   return (
     <main className="wrap" style={{ paddingBlock: '20px 60px' }}>
       <section className={s.hero}>
         <Hero3D className={s.hero3d} />
         <div className={s.heroText}>
-          <div className="eyebrow" style={{ color: 'var(--accent)' }}>{prof?.name ? `Welcome back, ${prof.name.split(' ')[0]} · ` : ''}B.E. Electronics &amp; Telecommunication · Semester V</div>
-          <h1 className={`display ${s.h1}`}>See the physics. Fix what you believe.</h1>
-          <p className={s.lead}>Every lab starts with a real problem. Predict what will happen, watch it in a live simulation, then repair or code the fix. PulseAI maps what you misunderstand and builds your path to fix it.</p>
+          <span className="eyebrow" style={{ color: 'var(--accent)' }}>Welcome, {prof.name.split(' ')[0]} · B.E. Electronics &amp; Telecommunication · Class {prof.classCode}</span>
+          <h1 className="display">Your ENTC curriculum, as a lab.</h1>
+          <p>Open a chapter: your professor’s slides are already there. Switch on AI mode to be taught step by step, then build each circuit yourself in the simulator.</p>
           <div className={s.ctas}>
-            <Link href={`/lab/${LAB_LIST[0].id}`} className="btn btn-primary">Start with the mic repair →</Link>
-            <Link href="/miner" className="btn btn-ghost">My Mind Map</Link>
-            <Link href="/studio" className="btn btn-ghost">Lecture Studio</Link>
-          </div>
-          <div className={s.loop} aria-label="How each lab works">
-            {['Predict', 'Observe', 'Repair / Code', 'Explain'].map((t, i) => (
-              <span key={t} className={s.loopStep}><span>{i + 1}</span>{t}</span>
-            ))}
+            <Link className="btn btn-primary" href={`/learn/${next.id}`}>{started ? 'Continue' : 'Start'}: {next.title} →</Link>
+            <span className={s.prog}>{started} of {all.length} chapters started</span>
           </div>
         </div>
       </section>
 
-      <section className={`card ${s.progress}`} aria-label="Your progress">
-        <div className={s.stat}><b>{sum ? sum.labsDone : 0}<small>/{LAB_LIST.length}</small></b><span>Labs completed</span></div>
-        <div className={s.stat}><b>{sum ? sum.correct : 0}<small>/{sum ? sum.predictions : 0}</small></b><span>Predictions correct</span></div>
-        <div className={s.stat}><b>{sum ? sum.fixed : 0}<small>/{sum ? sum.misconceptions : 0}</small></b><span>Misconceptions fixed</span></div>
-        <div className={s.stat}><b>{sum ? sum.repairs + sum.challenges : 0}</b><span>Repairs &amp; code challenges</span></div>
-        <div className={s.stat}><b>{sum?.quizBest || '—'}</b><span>Gate Blitz best</span></div>
-        <div className={s.stat}><b>{sum?.ml ? Math.round(sum.ml.accuracy * 100) + '%' : '—'}</b><span>Your best AI model</span></div>
-        {sum && sum.open.length > 0 && (
-          <div className={s.open}>
-            <span className="eyebrow" style={{ color: 'var(--coral)' }}>Still to fix</span>
-            {sum.open.slice(0, 4).map(m => <span key={m} className="chip" style={{ borderColor: 'rgba(255,111,94,.5)', color: 'var(--fg)' }}>{m}</span>)}
-          </div>
-        )}
-      </section>
+      <div className={s.syncRow}>
+        <h2 className={s.h2}>Semester curriculum</h2>
+        <span className="chip"><i className={s.dot} />Imported from Moodle · Juno (demo)</span>
+      </div>
 
-      {MODULES.map(mod => (
-        <section key={mod.id} className={s.module}>
-          <div className={s.modHead}>
-            <span className="eyebrow">{mod.code}</span>
-            <h2 className={s.h2}>{mod.name}</h2>
-            <span className={s.modBlurb}>{mod.blurb}</span>
-          </div>
-          {LAB_LIST.filter(l => l.module === mod.id).map(lab => {
-            const st = STATUS[status(lab.id)];
-            return (
-              <Link key={lab.id} href={`/lab/${lab.id}`} className={`card ${s.lab}`}>
-                <div className={s.labMain}>
-                  <div className={s.labTop}>
-                    <span className="eyebrow">{lab.title} · {lab.minutes} min</span>
-                    <span className="pill" style={{ color: st[1] }}>{st[0]}</span>
-                  </div>
-                  <h3 className={s.h3}>{lab.scenario.title}</h3>
-                  <p className={s.scen}>{lab.scenario.text}</p>
-                  <div className={s.skills}>{lab.skills.map(k => <span key={k} className="chip">{k}</span>)}</div>
-                </div>
-                <span className={`btn btn-primary ${s.cta}`}>{status(lab.id) === 'new' ? 'Start lab' : 'Continue'} →</span>
-              </Link>
-            );
-          })}
-        </section>
-      ))}
-
-      <p style={{ color: 'var(--muted)', fontSize: 13, marginTop: 30 }}>
-        Progress is saved in this browser. <button onClick={() => { resetProgress(); }} style={{ background: 'none', border: 0, color: 'var(--blue)', cursor: 'pointer', padding: 0 }}>Reset my progress</button>
-      </p>
-      {ask && <ProfileModal onClose={() => { setAsk(false); setProf(getProfile()); }} />}
+      <div className={s.subjects}>
+        {SUBJECTS.map(sub => (
+          <section key={sub.id} className={`card ${s.subject}`} style={{ '--sc': sub.color }}>
+            <header>
+              <span className="eyebrow">{sub.code} · {sub.year}</span>
+              <h3>{sub.name}</h3>
+              <span className={s.fac}>{sub.faculty}</span>
+            </header>
+            <ol className={s.chapters}>
+              {chaptersOf(sub.id).map(ch => {
+                const up = mats.filter(m => m.chapter === ch.id);
+                const c = chOpened(ch.id);
+                return (
+                  <li key={ch.id}>
+                    <Link href={`/learn/${ch.id}`} className={s.ch}>
+                      <span className={s.unit}>Unit {ch.unit}</span>
+                      <span className={s.chMain}>
+                        <b>{ch.title}</b>
+                        <span className={s.tags}>
+                          <span className={s.tag}>{up.length ? `${up.length} file${up.length > 1 ? 's' : ''} from professor` : 'Professor’s slides'}</span>
+                          <span className={s.tag}>AI mode</span>
+                          <span className={s.tag}>{ch.sims.length} simulator{ch.sims.length > 1 ? 's' : ''}</span>
+                        </span>
+                      </span>
+                      <span className={s.state} style={{ color: c?.done ? 'var(--ok)' : c ? 'var(--warn)' : 'var(--muted)' }}>{c?.done ? 'Done' : c ? 'In progress' : 'Open →'}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        ))}
+      </div>
     </main>
   );
 }

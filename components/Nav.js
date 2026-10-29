@@ -1,8 +1,8 @@
 'use client';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getProfile, setProfile } from '@/lib/progress';
+import { getProfile, setProfile, logout } from '@/lib/progress';
 
 export function Logo() {
   return (
@@ -16,13 +16,14 @@ export function Logo() {
   );
 }
 
+// Kept for older pages that ask for a name inline
 export function ProfileModal({ onClose, initialClass }) {
   const p = getProfile();
   const [name, setName] = useState(p.name || '');
   const [code, setCode] = useState(initialClass || p.classCode || 'DEMO');
   return (
     <div className="modal-back" role="dialog" aria-modal="true" aria-labelledby="pmTitle">
-      <form className="card modal" onSubmit={e => { e.preventDefault(); setProfile({ name: name.trim().slice(0, 40) || 'Student', classCode: code.trim().toUpperCase().slice(0, 12) || 'DEMO' }); onClose(); }}>
+      <form className="card modal" onSubmit={e => { e.preventDefault(); setProfile({ role: p.role || 'student', name: name.trim().slice(0, 40) || 'Student', classCode: code.trim().toUpperCase().slice(0, 12) || 'DEMO' }); onClose(); }}>
         <div className="eyebrow">Join your class</div>
         <h2 id="pmTitle" style={{ fontSize: 20 }}>Who is learning today?</h2>
         <label htmlFor="pmName" style={{ fontSize: 13, color: 'var(--muted)' }}>Your name</label>
@@ -35,38 +36,40 @@ export function ProfileModal({ onClose, initialClass }) {
   );
 }
 
+const STUDENT = [['/', 'Curriculum', p => p === '/' || p.startsWith('/learn')], ['/labs', 'Simulators', p => p.startsWith('/labs') || p.startsWith('/lab/') || p.startsWith('/workbench')], ['/miner', 'My Progress', p => p.startsWith('/miner')], ['/network', 'Network', p => p.startsWith('/network') || p.startsWith('/forum')]];
+const PROF = [['/professor', 'Insights', p => p === '/professor'], ['/professor/materials', 'Study Materials', p => p.startsWith('/professor/materials')], ['/studio', 'Lecture Studio', p => p.startsWith('/studio')], ['/network', 'Network', p => p.startsWith('/network')]];
+
 export default function Nav() {
   const path = usePathname();
-  const [prof, setProf] = useState({ name: '', classCode: 'DEMO' });
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const [prof, setProf] = useState({ name: '', classCode: 'DEMO', role: '' });
   useEffect(() => {
     const sync = () => setProf(getProfile());
     sync(); window.addEventListener('pulse-progress', sync);
     return () => window.removeEventListener('pulse-progress', sync);
   }, []);
-  const isProf = path.startsWith('/professor') || path.startsWith('/studio');
+  const role = prof.role || (path.startsWith('/professor') || path.startsWith('/studio') ? 'professor' : 'student');
+  const links = role === 'professor' ? PROF : STUDENT;
+  if (path.startsWith('/login')) return (
+    <nav className="nav"><div className="wrap"><Link href="/login" aria-label="PulseENTC"><Logo /></Link><div className="navright"><span className="lms"><i />Moodle · Juno integration (demo)</span></div></div></nav>
+  );
   return (
     <nav className="nav">
       <div className="wrap">
-        <Link href="/" aria-label="PulseENTC home"><Logo /></Link>
+        <Link href={role === 'professor' ? '/professor' : '/'} aria-label="PulseENTC home"><Logo /></Link>
         <div className="navlinks">
-          <Link href="/" aria-current={path === '/' || path.startsWith('/lab') ? 'page' : undefined}>Labs</Link>
-          <Link href="/miner" aria-current={path.startsWith('/miner') ? 'page' : undefined}>My Mind Map</Link>
-          <Link href="/forum" aria-current={path.startsWith('/forum') ? 'page' : undefined}>Forum</Link>
-          <Link href="/studio" aria-current={path.startsWith('/studio') ? 'page' : undefined}>Lecture Studio</Link>
-          <Link href="/professor" aria-current={path.startsWith('/professor') ? 'page' : undefined}>Professor</Link>
+          {links.map(([href, label, active]) => <Link key={href} href={href} aria-current={active(path) ? 'page' : undefined}>{label}</Link>)}
         </div>
         <div className="navright">
-          <span className="lms" title="Demo integration"><i />Moodle · Juno sync (demo)</span>
-          {!isProf && (
-            <button className="who" onClick={() => setOpen(true)} aria-label="Change name or class">
-              <span>{prof.name || 'Join class'} · <span style={{ fontFamily: 'var(--mono)', color: 'var(--muted)' }}>{prof.classCode}</span></span>
-              <span className="av">{(prof.name || '?').slice(0, 1).toUpperCase()}</span>
+          <span className="lms" title="Demo integration"><i />Synced with Moodle · Juno (demo)</span>
+          {prof.name ? (
+            <button className="who" onClick={() => { logout(); router.push('/login'); }} title="Sign out" aria-label={`Signed in as ${prof.name}. Sign out`}>
+              <span>{prof.name} · <span style={{ fontFamily: 'var(--mono)', color: 'var(--muted)' }}>{role === 'professor' ? 'Professor' : prof.classCode}</span></span>
+              <span className="av" style={{ background: role === 'professor' ? 'var(--accent)' : 'var(--blue)' }}>{prof.name.slice(0, 1).toUpperCase()}</span>
             </button>
-          )}
+          ) : <Link className="btn btn-primary" href="/login" style={{ padding: '6px 14px' }}>Sign in</Link>}
         </div>
       </div>
-      {open && <ProfileModal onClose={() => setOpen(false)} />}
     </nav>
   );
 }

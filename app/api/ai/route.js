@@ -1,4 +1,5 @@
 import { LABS, matchByKeywords, LAB_LIST } from '@/lib/labs';
+import { chapterById } from '@/lib/curriculum';
 
 // All AI calls go through here, so keys never reach the browser.
 // Provider chain: Gemini (if GEMINI_API_KEY and internet) → local Ollama model (if OLLAMA_MODEL set,
@@ -47,6 +48,36 @@ async function gemini(opts) {
   const o = { json: false, maxTokens: 450, ...opts };
   const g = await viaGemini(o); if (g) return g;
   return viaOllama(o);
+}
+
+
+// ---------- Chapter teaching helpers (fallbacks work with no AI at all) ----------
+const STOP = new Set('the a an is are of to in and or for on what why how does do me my this that with it be can you give explain about from i im not get step slide'.split(' '));
+const words = t => (t || '').toLowerCase().replace(/[^a-z0-9.\s]/g, ' ').split(/\s+/).filter(w => w.length > 2 && !STOP.has(w));
+function bestStep(ch, q) {
+  const qs = new Set(words(q)); let best = null, score = 0;
+  ch.steps.forEach((st, i) => { const sc = words(st.title + ' ' + st.body).filter(w => qs.has(w)).length; if (sc > score) { score = sc; best = i; } });
+  return score ? best : null;
+}
+function teachFallback(ch, mode, q, slide) {
+  const ql = (q || '').toLowerCase();
+  const simFor = () => ch.sims[0]?.id || null;
+  if (mode === 'teach' || ql.includes('from the start')) return { text: `Here is “${ch.title}” in ${ch.steps.length} steps. Read one at a time, then open the simulator to see it happen.`, steps: ch.steps, sim: simFor() };
+  if (ql.includes('formula')) return { text: 'These are the formulas to remember for this chapter:\n' + ch.formulas.map(f => `• ${f.name}: ${f.expr}`).join('\n') };
+  if (ql.includes('quiz')) {
+    const st = ch.steps;
+    return { text: `Try these without looking back:\n1. In your own words: ${st[1]?.title.toLowerCase()}?\n2. Which formula links ${ch.formulas[0]?.name.toLowerCase()}? Write it down.\n3. Predict what the simulator will show for “${st[st.length - 1]?.title.toLowerCase()}”, then open it and check.\nTell me your answers and I’ll check them.`, sim: simFor() };
+  }
+  if (ql.includes('example') || ql.includes('real-life') || ql.includes('real life')) return { text: `A real-life place you meet this: ${ch.sims.map(x => x.blurb).join(' ')} Open the simulator to try it with your own hands.`, sim: simFor() };
+  if (mode === 'slide' || ql.startsWith('summarize slide') || ql.startsWith('explain slide')) {
+    const lines = (slide?.text || '').split('\n').filter(Boolean);
+    const k = bestStep(ch, (slide?.title || '') + ' ' + lines.join(' '));
+    return { text: `Slide: “${slide?.title || ch.title}”.\n${lines.length ? 'Its key points: ' + lines.join('; ') + '.\n' : ''}${k !== null ? 'In plain words: ' + ch.steps[k].body : ch.summary}`, sim: simFor() };
+  }
+  const k = bestStep(ch, q);
+  if (mode === 'step' && k !== null) return { text: `Let me put it another way. ${ch.steps[k].body} ${k + 1 < ch.steps.length ? 'This leads straight into the next idea: ' + ch.steps[k + 1].title.toLowerCase() + '.' : ''} The simulator shows this live.`, sim: simFor() };
+  if (k !== null) return { text: ch.steps[k].body + (k + 1 < ch.steps.length ? `\n\nNext: ${ch.steps[k + 1].title}. ${ch.steps[k + 1].body}` : ''), sim: simFor() };
+  return { text: ch.summary + '\n\nAsk me about a specific slide or step and I’ll break it down.', sim: simFor() };
 }
 
 function tutorFallback(labId, q, st) {
@@ -107,6 +138,37 @@ STUDENT ASKS: ${body.question}`;
       } catch {}
     }
     return Response.json({ slides: fallback, source: 'fallback' });
+  }
+
+  if (kind === 'chapter') {
+    const ch = chapterById(body.chapter); if (!ch) return Response.json({ error: 'unknown chapter' }, { status: 400 });
+    const base = { summary: ch.summary, formulas: ch.formulas, steps: ch.steps, courses: ch.courses };
+    if (!body.material) return Response.json({ ...base, source: 'fallback' });
+    const text = await gemini({ json: true, maxTokens: 1400,
+      system: 'You are an ENTC engineering teacher. From the professor\'s lecture material, produce JSON: {"summary": "4-5 sentence plain-English summary", "formulas": [{"name": "...", "expr": "..."}] (up to 6, only formulas in or implied by the material), "steps": [{"title": "...", "body": "2-3 sentences"}] (4-6 steps that teach the chapter in order), "courses": ["3 short online course or topic suggestions (NPTEL, SWAYAM, Coursera, edX) to go deeper"]}. Be accurate.',
+      prompt: `Chapter: ${ch.title}\nMATERIAL:\n${String(body.material).slice(0, 14000)}` });
+    if (text) { try { const j = JSON.parse(text); return Response.json({ summary: j.summary || ch.summary, formulas: (j.formulas || []).slice(0, 6), steps: (j.steps || []).slice(0, 7), courses: (j.courses || []).slice(0, 4), source: 'ai' }); } catch {} }
+    return Response.json({ ...base, source: 'fallback' });
+  }
+
+  if (kind === 'teach') {
+    const ch = chapterById(body.chapter); if (!ch) return Response.json({ error: 'unknown chapter' }, { status: 400 });
+    const fb = teachFallback(ch, body.mode, body.question, body.slide);
+    const system = `You are PulseAI, an AI teacher for B.E. Electronics & Telecommunication students in India, teaching the chapter "${ch.title}". Teach from the professor's material below. Explain simply, with an Indian everyday example when useful. When asked to teach or break something down, use numbered steps. Keep answers under 170 words unless teaching the whole chapter. Physics must be textbook-correct. Available simulators for this chapter: ${ch.sims.map(x => x.title).join('; ')}; suggest opening one when it would help. Plain text only, no markdown symbols like ** or #.`;
+    const prompt = `PROFESSOR'S MATERIAL:\n${String(body.material || ch.material.map(x => x.title + '\n' + x.bullets.join('\n')).join('\n\n')).slice(0, 12000)}\n\nCURRENT SLIDE: ${body.slide?.title || ''}\n${body.slide?.text || ''}\n\nCONVERSATION:\n${(body.history || []).map(m => (m.role === 'me' ? 'Student: ' : 'Teacher: ') + m.text).join('\n')}\n\nSTUDENT: ${body.question}`;
+    const text = await gemini({ system, prompt, maxTokens: body.mode === 'teach' ? 900 : 450 });
+    return Response.json(text ? { text, sim: fb.sim, source: 'ai' } : { ...fb, source: 'fallback' });
+  }
+
+  if (kind === 'fault') {
+    const faults = (body.faults || []).slice(0, 6), wiring = (body.wiring || []).slice(0, 30);
+    const fb = faults.length
+      ? faults.filter(f => f.level !== 'open').concat(faults.filter(f => f.level === 'open')).slice(0, 2).map((f, i) => `${i ? 'Also: ' : ''}${f.title}. ${f.explain} Try this: ${f.fix}`).join('\n\n')
+      : 'Every connection matches the reference and the circuit behaves as intended. Explain to yourself why each wire is needed; that is what the viva will ask.';
+    const text = await gemini({ maxTokens: 320,
+      system: 'You are PulseAI, a lab assistant checking a student\'s breadboard circuit. A deterministic checker has already found the faults listed; never contradict it and never invent other faults. In at most 110 words: explain the most important fault in plain words, why it breaks the circuit physically, and give one concrete next step. If there are no faults, praise briefly and ask one viva-style question. Plain text, no markdown.',
+      prompt: JSON.stringify({ circuit: body.bench, wiring, faults, values: body.values }) });
+    return Response.json({ text: text || fb, source: text ? 'ai' : 'fallback' });
   }
 
   if (kind === 'coach') {

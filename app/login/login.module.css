@@ -1,0 +1,20 @@
+.page { position: relative; min-height: calc(100dvh - 59px); display: flex; align-items: center; overflow: hidden; }
+.bg { position: absolute; inset: 0; }
+.bg canvas { width: 100%; height: 100%; display: block; }
+.shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,15,21,.94) 0%, rgba(10,15,21,.75) 50%, rgba(10,15,21,.55) 100%); }
+.inner { position: relative; z-index: 1; width: 100%; max-width: 1200px; margin: 0 auto; padding: 32px max(16px, env(safe-area-inset-right, 0px)) 32px max(16px, env(safe-area-inset-left, 0px)); display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 420px); gap: 40px; align-items: center; }
+.copy h1 { font-size: clamp(36px, 5.4vw, 64px); line-height: 1.02; margin: 8px 0 14px; }
+.copy p { color: #b8c6d3; font-size: 17px; max-width: 54ch; margin: 0 0 14px; }
+.copy ul { margin: 0; padding-left: 18px; color: var(--fg); display: flex; flex-direction: column; gap: 6px; }
+.copy li::marker { color: var(--accent); }
+.form { padding: 22px; display: flex; flex-direction: column; gap: 8px; background: rgba(21,31,42,.94); }
+.form label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.form .btn { margin-top: 10px; justify-content: center; }
+.roles { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--ink); padding: 4px; border-radius: 10px; border: 1px solid var(--line); margin-bottom: 6px; }
+.roles button { border: 0; background: transparent; padding: 10px; border-radius: 7px; cursor: pointer; color: var(--muted); font-weight: 600; }
+.roles .on { background: var(--panel-2); color: var(--fg); box-shadow: inset 0 0 0 1px var(--accent); }
+.lms { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+.lms small { color: var(--muted); font-size: 11.5px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; }
+select.field { width: 100%; background: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; }
+@media (max-width: 860px) { .inner { grid-template-columns: 1fr; } .shade { background: rgba(10,15,21,.86); } }
