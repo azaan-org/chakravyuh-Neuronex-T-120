@@ -5,7 +5,7 @@ import QRCode from 'qrcode';
 import JSZip from 'jszip';
 import { LABS, LAB_LIST, MODULES } from '@/lib/labs';
 import { QUESTIONS, questionKey } from '@/lib/questions';
-import { supabase } from '@/lib/supabase';
+import { fetchEvents, insertEvents, clearClass } from '@/lib/events';
 import s from './prof.module.css';
 
 const SAMPLE_DECK = [
@@ -34,6 +34,8 @@ export default function Professor() {
   const [show, setShow] = useState(null); // { title, url, qr }
   const [insight, setInsight] = useState(null);
   const [seeding, setSeeding] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
+  const [confirmClear, setConfirmClear] = useState(false);
   const fileRef = useRef(null);
 
   useEffect(() => { let o = location.origin; try { const c = localStorage.getItem('pulse.prof.class'); if (c) setCode(c); const b = localStorage.getItem('pulse.prof.base'); if (b) o = b; } catch {} setOrigin(o); }, []);
@@ -42,17 +44,23 @@ export default function Professor() {
   useEffect(() => { try { localStorage.setItem('pulse.prof.class', code); } catch {} }, [code]);
   useEffect(() => { if (origin) QRCode.toDataURL(`${origin}/?class=${code}`, { margin: 1, width: 360, color: { dark: '#0a0f15', light: '#ffffff' } }).then(setJoinQR); }, [origin, code]);
 
-  // Load + subscribe to this class's events
+  // Poll the laptop's local event store for this class (no internet needed)
   useEffect(() => {
-    let cancelled = false;
-    const sb = supabase();
-    sb.from('events').select('*').eq('class_code', code).order('created_at', { ascending: false }).limit(3000)
-      .then(({ data }) => { if (!cancelled && data) setEvents(data); });
-    const ch = sb.channel('class-' + code)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: `class_code=eq.${code}` }, p => setEvents(ev => [p.new, ...ev].slice(0, 3000)))
-      .subscribe(st => setLive(st === 'SUBSCRIBED'));
-    return () => { cancelled = true; sb.removeChannel(ch); };
-  }, [code]);
+    let cancelled = false, last = 0, timer;
+    setEvents([]);
+    const tick = async () => {
+      try {
+        const j = await fetchEvents(code, last);
+        if (cancelled) return;
+        if (j.lastId < last) { last = 0; setEvents([]); }
+        else if (j.events.length) { last = j.events[j.events.length - 1].id; setEvents(ev => [...j.events.reverse(), ...ev].slice(0, 3000)); }
+        setLive(true);
+      } catch { if (!cancelled) setLive(false); }
+      if (!cancelled) timer = setTimeout(tick, 1500);
+    };
+    tick();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [code, resetKey]);
 
   const agg = useMemo(() => {
     const preds = events.filter(e => e.type === 'prediction');
@@ -93,7 +101,7 @@ export default function Professor() {
   async function tag(slides, name) {
     setDeckBusy(true);
     let tags = [];
-    try { const r = await fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'match', slides }) }); const j = await r.json(); tags = j.slides || []; setDeckSrc(j.source === 'ai' ? 'Tagged by Gemini' : 'Tagged by keyword matcher (AI offline)'); } catch { setDeckSrc('Tagged by keyword matcher (AI offline)'); }
+    try { const r = await fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'match', slides }) }); const j = await r.json(); tags = j.slides || []; setDeckSrc(j.source === 'ai' ? 'Tagged by AI' : 'Tagged by built-in keyword matcher'); } catch { setDeckSrc('Tagged by built-in keyword matcher'); }
     setDeck({ name, slides: slides.map((t, i) => ({ i, title: t.split('\n')[0] || `Slide ${i + 1}`, body: t.split('\n').slice(1).join(' · '), lab: tags[i]?.lab || null, summary: tags[i]?.summary || null })) });
     setDeckBusy(false);
   }
@@ -119,7 +127,7 @@ export default function Professor() {
       if (rnd() < 0.5) rows.push({ class_code: code, student, lab: 'iot', type: 'ml', question: 'ml', correct: true, payload: { demo: true, accuracy: 0.9 + rnd() * 0.08 } });
       if (rnd() < 0.6) rows.push({ class_code: code, student, lab: 'opamp', type: 'inspect', question: 'clipping', payload: { demo: true } });
     }
-    await supabase().from('events').insert(rows);
+    await insertEvents(rows);
     setSeeding(false);
   }
   async function suggest() {
@@ -137,7 +145,7 @@ export default function Professor() {
         <div className={s.classBox}>
           <label htmlFor="cls" className="eyebrow">Class code</label>
           <input id="cls" className="field" value={code} onChange={e => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 12) || 'DEMO')} style={{ fontFamily: 'var(--mono)', width: 140 }} />
-          <span className={s.live}><i style={{ background: live ? 'var(--ok)' : 'var(--muted)' }} />{live ? 'Live' : 'Connecting'}</span>
+          <span className={s.live}><i style={{ background: live ? 'var(--ok)' : 'var(--muted)' }} />{live ? 'Live on this laptop' : 'Connecting'}</span>
         </div>
       </div>
 
@@ -181,6 +189,9 @@ export default function Professor() {
           {isLocal && <span className={s.err} style={{ fontSize: 12.5 }}>Phones can’t open “localhost”. Replace it with this laptop’s Wi-Fi address, e.g. http://192.168.1.20:3000 (same Wi-Fi or hotspot as the phones).</span>}
           <div className={s.row} style={{ justifyContent: 'center' }}>
             <button className="btn btn-ghost" onClick={seed} disabled={seeding}>{seeding ? 'Adding…' : 'Add demo class data'}</button>
+            {confirmClear
+              ? <button className="btn btn-ghost" style={{ borderColor: 'var(--coral)', color: 'var(--coral)' }} onClick={async () => { await clearClass(code); setConfirmClear(false); setResetKey(k => k + 1); }}>Yes, clear {code}</button>
+              : <button className="btn btn-ghost" onClick={() => { setConfirmClear(true); setTimeout(() => setConfirmClear(false), 4000); }} disabled={!events.length}>Clear class data</button>}
           </div>
           <span className={s.muted} style={{ fontSize: 12 }}>Demo data adds 28 sample students, labelled “Demo student”.</span>
         </div>
@@ -227,7 +238,7 @@ export default function Professor() {
             <h2 className={s.h2}>AI teaching suggestion</h2>
             <p className={s.muted}>Turns the heatmap into a plan for your next 10 minutes.</p>
             <button className="btn btn-primary" onClick={suggest} disabled={!agg.misRank.length} style={{ alignSelf: 'flex-start' }}>Suggest what to reteach</button>
-            {insight && <p className={s.insight}>{insight.text}{insight.source === 'fallback' && <small className={s.muted}> · offline suggestion</small>}</p>}
+            {insight && <p className={s.insight}>{insight.text}{insight.source === 'fallback' && <small className={s.muted}> · built-in suggestion</small>}</p>}
           </div>
           <div className={`card ${s.pad}`}>
             <h2 className={s.h2}>Lab stumbling blocks</h2>

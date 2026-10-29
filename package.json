@@ -9,7 +9,6 @@
     "demo": "next build && next start -H 0.0.0.0 -p 3000"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.4",
     "jszip": "^3.10.1",
     "next": "15.5.4",
     "qrcode": "^1.5.4",

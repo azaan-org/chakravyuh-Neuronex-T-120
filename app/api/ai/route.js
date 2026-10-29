@@ -1,26 +1,52 @@
 import { LABS, matchByKeywords, LAB_LIST } from '@/lib/labs';
 
-// All AI calls go through here so the Gemini key never reaches the browser.
-// Every call has a deterministic fallback, so the demo works with no key or no network.
+// All AI calls go through here, so keys never reach the browser.
+// Provider chain: Gemini (if GEMINI_API_KEY and internet) → local Ollama model (if OLLAMA_MODEL set,
+// runs fully offline on the laptop) → deterministic built-in answers. The demo never breaks.
 const MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const OLLAMA_URL = process.env.OLLAMA_URL || 'http://127.0.0.1:11434';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || '';
 
-async function gemini({ system, prompt, json = false, maxTokens = 450 }) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 9000);
-  try {
+async function withTimeout(ms, fn) {
+  const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fn(ctrl.signal); } catch (e) { console.warn('ai provider failed:', e.message); return null; } finally { clearTimeout(t); }
+}
+
+async function viaGemini({ system, prompt, json, maxTokens }) {
+  const key = process.env.GEMINI_API_KEY; if (!key) return null;
+  return withTimeout(9000, async signal => {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`, {
-      method: 'POST', signal: ctrl.signal, headers: { 'content-type': 'application/json' },
+      method: 'POST', signal, headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens, ...(json ? { responseMimeType: 'application/json' } : {}), thinkingConfig: { thinkingBudget: 0 } }
       })
     });
-    if (!r.ok) { console.warn('gemini', r.status, (await r.text()).slice(0, 200)); return null; }
+    if (!r.ok) { console.warn('gemini', r.status); return null; }
     const j = await r.json();
     return j.candidates?.[0]?.content?.parts?.map(p => p.text).join('').trim() || null;
-  } catch (e) { console.warn('gemini failed', e.message); return null; } finally { clearTimeout(t); }
+  });
+}
+
+async function viaOllama({ system, prompt, json, maxTokens }) {
+  if (!OLLAMA_MODEL) return null;
+  return withTimeout(25000, async signal => {
+    const r = await fetch(`${OLLAMA_URL}/api/chat`, {
+      method: 'POST', signal, headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: OLLAMA_MODEL, stream: false, ...(json ? { format: 'json' } : {}), options: { temperature: 0.4, num_predict: maxTokens },
+        messages: [{ role: 'system', content: system }, { role: 'user', content: prompt }] })
+    });
+    if (!r.ok) { console.warn('ollama', r.status); return null; }
+    const j = await r.json();
+    return j.message?.content?.trim() || null;
+  });
+}
+
+async function gemini(opts) {
+  const o = { json: false, maxTokens: 450, ...opts };
+  const g = await viaGemini(o); if (g) return g;
+  return viaOllama(o);
 }
 
 function tutorFallback(labId, q, st) {

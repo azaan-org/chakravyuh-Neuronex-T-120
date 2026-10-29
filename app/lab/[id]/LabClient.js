@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { LABS, MODULES } from '@/lib/labs';
 import { recordEvent, markOpened, getProfile, setProfile } from '@/lib/progress';
-import { logEvent } from '@/lib/supabase';
+import { logEvent } from '@/lib/events';
 import { ProfileModal } from '@/components/Nav';
 import s from './lab.module.css';
 
@@ -60,9 +60,9 @@ export default function LabClient({ labId }) {
     try {
       const r = await fetch('/api/ai', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ kind: 'tutor', lab: labId, question, state: state.current, recent: recent.current, history }) });
       const j = await r.json();
-      setMsgs(m => [...m, { role: 'ai', text: j.text, tag: j.source === 'ai' ? null : 'offline answer' }]);
+      setMsgs(m => [...m, { role: 'ai', text: j.text, tag: j.source === 'ai' ? null : 'built-in answer' }]);
     } catch {
-      setMsgs(m => [...m, { role: 'ai', text: lab.fallback.default, tag: 'offline answer' }]);
+      setMsgs(m => [...m, { role: 'ai', text: lab.fallback.default, tag: 'built-in answer' }]);
     }
     setBusy(false);
   }
