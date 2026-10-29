@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Classroom IoT Lab</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: code editor on the left, virtual board + logic-analyzer timeline on the right. Single dark theme, same family as the other labs. */
+:root {
+  --ink: #0a0f15; --bench: #111922; --panel: #151f2a; --line: #243242; --fg: #dbe5ee; --muted: #8495a7;
+  --sensor: #ffd27a; --lamp: #ffb84d; --led: #5fd38d; --warn: #ff6f5e; --target: #46b6ff; --ok: #5fd38d; --bad: #ff6f5e; --ai: #b693ff;
+  --display: "Chakra Petch", "Segoe UI", sans-serif; --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--ink); color: var(--fg); font: 14px/1.5 var(--body); display: flex; flex-direction: column; }
+[hidden] { display: none !important; }
+button, input, textarea { font: inherit; color: inherit; }
+button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--sensor); outline-offset: 2px; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--bench); }
+.eyebrow { font: 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font: 700 22px/1.15 var(--display); letter-spacing: .02em; }
+h1 span { color: var(--led); }
+.levels { display: flex; gap: 4px; flex-wrap: wrap; background: var(--ink); padding: 4px; border-radius: 8px; border: 1px solid var(--line); }
+.levels button { border: 0; background: transparent; padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--muted); font-weight: 500; display: flex; gap: 6px; align-items: center; }
+.levels button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line); }
+.levels button .tick { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--muted); }
+.levels button.done .tick { background: var(--ok); border-color: var(--ok); }
+
+.app { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); min-height: 0; }
+.col { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; overflow-y: auto; min-width: 0; }
+.col + .col { border-left: 1px solid var(--line); background: var(--bench); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; min-width: 0; }
+h3 { margin: 0 0 8px; font: 500 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.task h2 { margin: 0 0 4px; font: 600 17px/1.3 var(--body); text-wrap: balance; }
+.task p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 65ch; }
+.editor { display: grid; grid-template-columns: 38px 1fr; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #0b1219; }
+.gutter { font: 13px/1.6 var(--mono); color: #4a5c6e; text-align: right; padding: 10px 8px 10px 0; user-select: none; white-space: pre; background: #0d151d; }
+textarea#code { font: 13px/1.6 var(--mono); background: transparent; border: 0; resize: vertical; padding: 10px; min-height: 360px; outline: none; white-space: pre; overflow-x: auto; tab-size: 2; color: #dbe5ee; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.primary { background: var(--led); color: #06180d; border: 0; border-radius: 7px; padding: 8px 16px; font-weight: 600; cursor: pointer; }
+.ghost { background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 7px 12px; cursor: pointer; }
+.ghost:hover { border-color: var(--muted); }
+.ref { font: 12px/1.7 var(--mono); color: var(--muted); }
+.ref code { color: var(--fg); }
+.console { font: 12px/1.5 var(--mono); background: #0b1219; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; max-height: 110px; overflow: auto; white-space: pre-wrap; color: var(--muted); }
+.console .err { color: var(--bad); }
+
+.board { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; }
+.board svg { width: 200px; height: auto; }
+.readings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.readings div { background: var(--panel); padding: 7px 10px; }
+.readings dt { font-size: 11px; color: var(--muted); }
+.readings dd { margin: 0; font: 15px var(--mono); font-variant-numeric: tabular-nums; }
+canvas.tl { width: 100%; height: 210px; display: block; border-radius: 8px; background: #0b1219; border: 1px solid var(--line); }
+.result { border-radius: 10px; padding: 12px; border: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; gap: 6px; }
+.result.pass { border-color: var(--ok); background: rgba(95,211,141,.07); }
+.result.fail { border-color: var(--bad); background: rgba(255,111,94,.06); }
+.result .big { font: 600 18px var(--body); }
+.result ul { margin: 0; padding-left: 18px; font-size: 13.5px; }
+.hint { font-size: 13.5px; padding: 8px 10px; border-left: 3px solid var(--sensor); background: rgba(255,210,122,.06); border-radius: 0 6px 6px 0; }
+
+/* ML */
+.feat { display: flex; gap: 8px; flex-wrap: wrap; }
+.feat label { display: flex; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: 99px; padding: 5px 12px; cursor: pointer; background: var(--ink); }
+.feat input { accent-color: var(--ai); }
+.mlgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat { font: 600 30px var(--mono); font-variant-numeric: tabular-nums; }
+.conf { display: grid; grid-template-columns: auto 1fr 1fr; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; font-size: 12.5px; }
+.conf div { background: var(--panel); padding: 6px 8px; }
+.conf .h { color: var(--muted); font-size: 11px; }
+.conf .n { font: 15px var(--mono); }
+.bars { display: flex; flex-direction: column; gap: 6px; }
+.barrow { display: grid; grid-template-columns: 92px 1fr 44px; gap: 8px; align-items: center; font-size: 12.5px; }
+.barrow .track { height: 10px; background: var(--ink); border-radius: 99px; border: 1px solid var(--line); overflow: hidden; }
+.barrow .track i { display: block; height: 100%; background: var(--ai); border-radius: 99px; }
+pre.export { font: 12px/1.55 var(--mono); background: #0b1219; border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow-x: auto; margin: 0; max-height: 260px; }
+.predict { background: rgba(182,147,255,.07); border: 1px solid var(--ai); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.opts { display: flex; flex-direction: column; gap: 6px; }
+.opts button { text-align: left; background: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.opts button.ok { border-color: var(--ok); } .opts button.no { border-color: var(--bad); }
+.opts button:disabled { cursor: default; }
+.src { font-size: 12px; color: var(--muted); }
+@media (max-width: 900px) {
+  .app { display: flex; flex-direction: column; }
+  body { height: auto; }
+  .col { overflow: visible; }
+  .col + .col { border-left: 0; border-top: 1px solid var(--line); }
+  .mlgrid { grid-template-columns: 1fr; }
+  .board { grid-template-columns: 1fr; }
+}
+</style></head>
+<body>
+<header class="bar">
+  <div><div class="eyebrow">Module 3 · Embedded &amp; IoT</div><h1>Smart Classroom <span>IoT + ML</span></h1></div>
+  <div class="levels" role="group" aria-label="Levels" id="levels"></div>
+</header>
+
+<div class="app" id="codeView">
+  <section class="col">
+    <div class="card task"><h3 id="lvlTag"></h3><h2 id="lvlTitle"></h2><p id="lvlText"></p></div>
+    <div class="editor"><div class="gutter" id="gutter">1</div><textarea id="code" spellcheck="false" aria-label="Arduino code editor"></textarea></div>
+    <div class="actions">
+      <button class="primary" id="run">▶ Upload &amp; run</button>
+      <button class="ghost" id="hintBtn">Hint</button>
+      <button class="ghost" id="reset">Reset code</button>
+      <span id="runInfo" style="font-size:12.5px;color:var(--muted)"></span>
+    </div>
+    <div class="ref">Board functions: <code>pinMode(pin, OUTPUT)</code> <code>digitalWrite(pin, HIGH/LOW)</code> <code>analogRead(A0)</code> → 0–1023 <code>delay(ms)</code> <code>millis()</code> <code>Serial.println(x)</code></div>
+    <div class="console" id="console">Serial monitor: output appears here after you run.</div>
+  </section>
+
+  <section class="col">
+    <div class="card">
+      <h3>Virtual board</h3>
+      <div class="board">
+        <svg viewBox="0 0 220 150" aria-label="Microcontroller board">
+          <rect x="6" y="20" width="150" height="110" rx="8" fill="#0f3b4a" stroke="#1e6276"/>
+          <rect x="52" y="58" width="58" height="34" rx="3" fill="#0b1219"/><text x="81" y="79" text-anchor="middle" fill="#5d6e80" font-size="9" font-family="IBM Plex Mono">MCU</text>
+          <g font-family="IBM Plex Mono" font-size="8" fill="#8fb8c6">
+            <circle id="led13" cx="30" cy="40" r="6" fill="#13301f" stroke="#5fd38d"/><text x="22" y="58">13</text>
+            <circle id="led12" cx="30" cy="110" r="6" fill="#3a1714" stroke="#ff6f5e"/><text x="16" y="127">12 WARN</text>
+            <circle cx="132" cy="110" r="7" fill="#3b2f1a" stroke="#ffd27a"/><text x="118" y="127">A0 LDR</text>
+          </g>
+          <line x1="156" y1="50" x2="182" y2="50" stroke="#8495a7" stroke-width="2"/>
+          <circle id="lamp" cx="196" cy="50" r="14" fill="#2a2416" stroke="#ffb84d" stroke-width="2"/>
+          <text x="186" y="80" font-family="IBM Plex Mono" font-size="8" fill="#8fb8c6">LAMP 8</text>
+        </svg>
+        <dl class="readings">
+          <div><dt>Sim time</dt><dd id="rTime">—</dd></div>
+          <div><dt>Sensor A0</dt><dd id="rA0">—</dd></div>
+          <div><dt>Lamp (pin 8)</dt><dd id="rLamp">—</dd></div>
+          <div><dt>Status LED (13)</dt><dd id="rLed">—</dd></div>
+        </dl>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Logic analyzer · your output vs target</h3>
+      <canvas class="tl" id="tl"></canvas>
+    </div>
+    <div class="result" id="result" hidden></div>
+    <div id="hints"></div>
+  </section>
+</div>
+
+<div class="app" id="mlView" hidden>
+  <section class="col">
+    <div class="card task"><h3>Level 4 · Train AI</h3><h2>Detect people from sensor data, then put the model on the board</h2>
+      <p>Your light-only rule turns lamps on in empty rooms when cleaners pass, and wastes energy on bright days. Train a classifier on room-sensor data to predict when people are really there.</p></div>
+    <div class="predict" id="mlPredict"></div>
+    <div class="card">
+      <h3>1 · Choose the sensors your model may use</h3>
+      <div class="feat" id="feats"></div>
+      <div class="actions" style="margin-top:10px"><button class="primary" id="train" style="background:var(--ai);color:#160c2b">Train model</button><span class="src" id="dataSrc"></span></div>
+    </div>
+    <div class="card">
+      <h3>Test day · real occupancy vs your model</h3>
+      <canvas class="tl" id="mlTl" style="height:150px"></canvas>
+    </div>
+  </section>
+  <section class="col">
+    <div class="mlgrid">
+      <div class="card"><h3>Accuracy on unseen day</h3><div class="stat" id="acc">—</div><div class="src" id="baseline"></div></div>
+      <div class="card"><h3>Mistakes</h3><div class="conf" id="conf"></div></div>
+    </div>
+    <div class="card"><h3>What the model learned · sensor weights</h3><div class="bars" id="bars"><span class="src">Train the model to see which sensors matter.</span></div></div>
+    <div class="card"><h3>2 · Deploy to the board (Arduino code)</h3><pre class="export" id="export">// Train a model first. Its learned weights will be written here as Arduino code.</pre>
+      <div class="actions" style="margin-top:8px"><button class="ghost" id="copy">Copy code</button></div></div>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+function emit(msg) { try { if (window.parent !== window) window.parent.postMessage(Object.assign({ source: 'pulse-lab', lab: 'iot' }, msg), '*'); } catch (e) {} }
+const pad = n => String(n).padStart(2, '0');
+const hhmm = min => pad(Math.floor(min / 60) % 24) + ':' + pad(Math.floor(min % 60));
+
+/* ---------- Simulated classroom light sensor for one day (per minute) ---------- */
+function rng(seed) { return () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }; }
+const DAY = (() => {
+  const r = rng(7), a = new Array(1440); let cloud = 0;
+  for (let m = 0; m < 1440; m++) {
+    const h = m / 60, sun = h > 6.2 && h < 18.6 ? Math.sin(Math.PI * (h - 6.2) / 12.4) : 0;
+    cloud = cloud * 0.97 + (r() - 0.5) * 0.06;
+    a[m] = Math.round(Math.max(18, Math.min(990, 35 + 880 * Math.pow(sun, 0.8) * (1 - Math.max(0, cloud) * 2.2) + (r() - 0.5) * 16)));
+  }
+  return a;
+})();
+const FAULTS = [[120, 140, 0], [1170, 1230, 1023]]; // [start, end, stuck value]: 02:00 wire cut, 19:30 wire shorted
+const DAY_FAULT = DAY.map((v, m) => { for (const [s, e, val] of FAULTS) if (m >= s && m < e) return val; return v; });
+
+/* ---------- Levels ---------- */
+const LEVELS = [
+  { id: 1, name: 'Blink', title: 'Blink the status LED at 1 Hz', duration: 4000, autoStep: 1,
+    text: 'Every controller in the building blinks pin 13 once per second to show it is alive: ON for 0.5 s, then OFF for 0.5 s. The installer’s code blinks too slowly. Fix it.',
+    code: `// Level 1: blink the status LED at 1 Hz\n// (ON for 0.5 s, OFF for 0.5 s)\n#define LED 13\n\nvoid setup() {\n  pinMode(LED, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(LED, HIGH);\n  delay(1000);\n  digitalWrite(LED, LOW);\n  delay(1000);\n}\n`,
+    hints: ['Measure it: one full blink should take 1000 ms in total.', 'ON time + OFF time = 1 s, so each delay must be 500 ms.'] },
+  { id: 2, name: 'Dark-room lamp', title: 'Turn the lamp on only when the room is dark', duration: 1440 * 60000, autoStep: 60000,
+    text: 'The window light sensor on A0 reads 0 (pitch dark) to 1023 (bright sun). The lamp on pin 8 must be ON whenever the reading is below 300. Right now the lamps burn all afternoon. Run it over a simulated day and fix the logic.',
+    code: `// Level 2: lamp ON when the room is dark\n// Light sensor (LDR) on A0: 0 = dark, 1023 = bright\n#define LAMP 8\n#define DARK_LEVEL 300\n\nvoid setup() {\n  pinMode(LAMP, OUTPUT);\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  int light = analogRead(A0);\n  if (light > DARK_LEVEL) {\n    digitalWrite(LAMP, HIGH);\n  } else {\n    digitalWrite(LAMP, LOW);\n  }\n  delay(60000); // check once a minute\n}\n`,
+    hints: ['Look at the timeline: is your lamp ON in daylight or at night?', 'Dark means a SMALL sensor reading. Check the comparison sign in the if statement.'] },
+  { id: 3, name: 'Fail-safe', title: 'Keep people safe when the sensor breaks', duration: 1440 * 60000, autoStep: 60000,
+    text: 'Sensors break. A cut wire makes A0 read exactly 0; a shorted wire makes it read exactly 1023. During a fault the lamp must stay ON (nobody left in the dark) and the warning LED on pin 12 must turn ON. Two faults happen in today’s simulation.',
+    code: `// Level 3: fail-safe controller\n// Broken sensor: reads exactly 0 (wire cut) or 1023 (shorted)\n// During a fault: lamp ON for safety + warning LED ON\n#define LAMP 8\n#define WARN 12\n#define DARK_LEVEL 300\n\nvoid setup() {\n  pinMode(LAMP, OUTPUT);\n  pinMode(WARN, OUTPUT);\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  int light = analogRead(A0);\n  if (light < DARK_LEVEL) {\n    digitalWrite(LAMP, HIGH);\n  } else {\n    digitalWrite(LAMP, LOW);\n  }\n  // TODO: detect a broken sensor and react\n  delay(60000);\n}\n`,
+    hints: ['Find the two red fault bands on the sensor row. What does your lamp do at 19:30, when it is dark outside but the sensor says 1023?', 'Check for the fault first: if (light == 0 || light == 1023) { lamp ON, warning ON } else { normal logic, warning OFF }.', 'Remember to switch the warning LED back OFF when the sensor is healthy again.'] },
+  { id: 4, name: 'Train AI', ml: true }
+];
+const done = {}, runs = {};
+let level = LEVELS[0], codes = {};
+function renderLevels() {
+  $('levels').innerHTML = LEVELS.map(l => `<button data-id="${l.id}" aria-pressed="${l === level}" class="${done[l.id] ? 'done' : ''}"><span class="tick"></span>${l.id} · ${l.name}</button>`).join('');
+  $('levels').querySelectorAll('button').forEach(b => b.onclick = () => setLevel(+b.dataset.id));
+}
+function setLevel(id) {
+  if (!level.ml) codes[level.id] = $('code').value;
+  level = LEVELS.find(l => l.id === id); renderLevels();
+  $('codeView').hidden = !!level.ml; $('mlView').hidden = !level.ml;
+  if (level.ml) { initML(); return; }
+  $('lvlTag').textContent = 'Level ' + level.id + ' of 4';
+  $('lvlTitle').textContent = level.title; $('lvlText').textContent = level.text;
+  $('code').value = codes[level.id] || level.code; gutter();
+  $('result').hidden = true; $('hints').innerHTML = ''; hintIdx = 0; lastRun = null; drawTimeline(); boardAt(0);
+  emit({ type: 'state', state: { level: level.id, task: level.title } });
+}
+function gutter() { const n = $('code').value.split('\n').length; $('gutter').textContent = Array.from({ length: n }, (_, i) => i + 1).join('\n'); }
+$('code').addEventListener('input', gutter);
+$('code').addEventListener('scroll', () => { $('gutter').scrollTop = $('code').scrollTop; });
+$('code').addEventListener('keydown', e => { if (e.key === 'Tab') { e.preventDefault(); const t = e.target, s = t.selectionStart; t.value = t.value.slice(0, s) + '  ' + t.value.slice(t.selectionEnd); t.selectionStart = t.selectionEnd = s + 2; gutter(); } });
+$('reset').onclick = () => { $('code').value = level.code; gutter(); };
+
+/* ---------- Arduino → JS, run in a Web Worker on a virtual clock ---------- */
+function translate(src) {
+  let s = src.replace(/^\s*#include.*$/gm, '');
+  s = s.replace(/^\s*#define\s+(\w+)\s+(.+)$/gm, 'const $1 = $2;');
+  const T = '(?:unsigned\\s+long|unsigned\\s+int|unsigned|long|int|float|double|bool|boolean|byte|char|uint8_t|uint16_t|uint32_t|String|void)';
+  s = s.replace(new RegExp('\\b' + T + '\\s+(\\w+)\\s*\\(([^)]*)\\)\\s*\\{', 'g'), (m, name, args) => 'function ' + name + '(' + args.replace(new RegExp('\\b(?:const\\s+)?' + T + '\\s+', 'g'), '') + ') {');
+  s = s.replace(new RegExp('\\b(?:const\\s+)?' + T + '\\s+(?=[A-Za-z_])', 'g'), 'let ');
+  s = s.replace(/\b(\d+)[uUlL]+\b/g, '$1');
+  return s;
+}
+const WORKER_SRC = `
+self.onmessage = (e) => {
+  const { js, duration, autoStep, sensor } = e.data;
+  let t = 0; const events = [], logs = []; const pins = {};
+  const env = {
+    HIGH: 1, LOW: 0, OUTPUT: 1, INPUT: 0, INPUT_PULLUP: 2, A0: 'A0', LED_BUILTIN: 13, true: true, false: false,
+    pinMode() {}, digitalWrite(p, v) { v = v ? 1 : 0; if (pins[p] !== v) { pins[p] = v; events.push([t, +p, v]); } },
+    digitalRead(p) { return pins[p] || 0; },
+    analogRead(p) { return sensor ? sensor[Math.min(sensor.length - 1, Math.floor(t / 60000))] : 512; },
+    delay(ms) { t += Math.max(0, +ms || 0); if (t > duration + 60000) throw { stop: true }; },
+    millis() { return t; }, map(x, a, b, c, d) { return (x - a) * (d - c) / (b - a) + c; }, constrain(x, a, b) { return Math.min(b, Math.max(a, x)); },
+    Serial: { begin() {}, print(x) { if (logs.length < 200) logs.push([t, String(x), false]); }, println(x) { if (logs.length < 200) logs.push([t, String(x === undefined ? '' : x), true]); } }
+  };
+  try {
+    const names = Object.keys(env).filter(k => k !== 'true' && k !== 'false');
+    const fn = new Function(...names, js + '\\n;return { setup: typeof setup === "function" ? setup : null, loop: typeof loop === "function" ? loop : null };');
+    const prog = fn(...names.map(k => env[k]));
+    if (!prog.setup || !prog.loop) throw new Error('Your code needs both void setup() and void loop().');
+    prog.setup();
+    let iter = 0;
+    while (t < duration && iter < 300000) { const t0 = t; try { prog.loop(); } catch (err) { if (err && err.stop) break; throw err; } if (t === t0) t += autoStep; iter++; }
+    self.postMessage({ ok: true, events, logs, end: t });
+  } catch (err) { self.postMessage({ ok: false, error: String(err && err.message || err), events, logs }); }
+};`;
+const workerURL = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }));
+function runCode(src, lv) {
+  return new Promise(resolve => {
+    let js; try { js = translate(src); } catch (e) { return resolve({ ok: false, error: e.message }); }
+    const w = new Worker(workerURL);
+    const timer = setTimeout(() => { w.terminate(); resolve({ ok: false, error: 'Your program ran too long without finishing. Is there a while loop that never ends?' }); }, 2500);
+    w.onmessage = e => { clearTimeout(timer); w.terminate(); resolve(e.data); };
+    w.onerror = e => { clearTimeout(timer); w.terminate(); resolve({ ok: false, error: e.message || 'Code error' }); e.preventDefault(); };
+    w.postMessage({ js, duration: lv.duration, autoStep: lv.autoStep, sensor: lv.id === 3 ? DAY_FAULT : lv.id === 2 ? DAY : null });
+  });
+}
+function stateAt(events, pin, t) { let v = 0; for (const [et, p, val] of events) { if (et > t) break; if (p === pin) v = val; } return v; }
+function series(events, pin, n, step, offset = 0) { const out = new Array(n); let v = 0, i = 0; const ev = events.filter(e => e[1] === pin); for (let k = 0; k < n; k++) { const t = k * step + offset; while (i < ev.length && ev[i][0] <= t) v = ev[i++][2]; out[k] = v; } return out; }
+
+/* ---------- Grading (deterministic) ---------- */
+function grade(res) {
+  const lv = level, msgs = [];
+  if (lv.id === 1) {
+    const n = 400, you = series(res.events, 13, n, 10, 5), target = you.map((_, k) => ((k * 10 + 5) % 1000) < 500 ? 1 : 0);
+    const match = you.filter((v, k) => v === target[k]).length / n;
+    const rises = res.events.filter(e => e[1] === 13 && e[2] === 1).map(e => e[0]);
+    if (!res.events.some(e => e[1] === 13)) msgs.push('Pin 13 never changed. Check that you call digitalWrite on pin 13.');
+    else if (rises.length >= 2) { const per = rises[1] - rises[0]; msgs.push('Your blink period is ' + (per / 1000).toFixed(2) + ' s (' + (1000 / per).toFixed(2) + ' Hz). Target: 1.00 s (1 Hz).'); }
+    const onT = (() => { const e = res.events.filter(x => x[1] === 13); const i = e.findIndex(x => x[2] === 1); return i >= 0 && e[i + 1] ? e[i + 1][0] - e[i][0] : null; })();
+    if (onT !== null && Math.abs(onT - 500) > 1) msgs.push('Your LED stays ON for ' + onT + ' ms. Target: 500 ms.');
+    return { match, pass: match > 0.95, msgs, rows: [{ name: 'Target LED 13', data: target, color: '#46b6ff' }, { name: 'Your LED 13', data: you, color: '#5fd38d', compare: target }], n, xLabel: k => (k * 10 / 1000).toFixed(1) + ' s' };
+  }
+  const n = 1440, sensor = lv.id === 3 ? DAY_FAULT : DAY;
+  const fault = sensor.map(v => v === 0 || v === 1023);
+  const targetLamp = sensor.map((v, m) => fault[m] || v < 300 ? 1 : 0);
+  const you = series(res.events, 8, n, 60000, 59000);
+  const rows = [{ name: 'Target lamp', data: targetLamp, color: '#46b6ff' }, { name: 'Your lamp (8)', data: you, color: '#ffb84d', compare: targetLamp }];
+  let match = you.filter((v, k) => v === targetLamp[k]).length / n;
+  if (lv.id === 3) {
+    const targetWarn = fault.map(f => f ? 1 : 0), yw = series(res.events, 12, n, 60000, 59000);
+    rows.push({ name: 'Target warning', data: targetWarn, color: '#46b6ff' }, { name: 'Your warning (12)', data: yw, color: '#ff6f5e', compare: targetWarn });
+    match = Math.min(match, yw.filter((v, k) => v === targetWarn[k]).length / n);
+    const ff = FAULTS.map(([s, e, val]) => { const lampOk = you.slice(s, e).every(v => v === 1), warnOk = yw.slice(s, e).every(v => v === 1); return { s, e, val, lampOk, warnOk }; });
+    ff.forEach(f => { if (!f.lampOk || !f.warnOk) msgs.push(`Fault at ${hhmm(f.s)}–${hhmm(f.e)} (sensor stuck at ${f.val}): lamp ${f.lampOk ? 'ON ✓' : 'went OFF ✗'}, warning ${f.warnOk ? 'ON ✓' : 'not ON ✗'}.`); });
+    const falseWarn = yw.findIndex((v, k) => v === 1 && !fault[k]);
+    if (falseWarn >= 0) msgs.push(`Your warning LED is ON at ${hhmm(falseWarn)} even though the sensor reads a healthy ${sensor[falseWarn]}. Turn it OFF when the sensor is normal.`);
+  }
+  // first lamp mismatch run
+  let k = you.findIndex((v, i) => v !== targetLamp[i]);
+  if (k >= 0 && msgs.length < 3) { let e = k; while (e < n && you[e] !== targetLamp[e]) e++; msgs.push(`${hhmm(k)}–${hhmm(e)}: your lamp was ${you[k] ? 'ON' : 'OFF'}, target was ${targetLamp[k] ? 'ON' : 'OFF'} (sensor ${sensor[k]}).`); }
+  const wasted = you.filter((v, i) => v && !targetLamp[i]).length;
+  if (wasted > 30) msgs.push(`Lamp ON for ${(wasted / 60).toFixed(1)} h when it was not needed.`);
+  return { match, pass: match > 0.985, msgs, rows, n, sensor, fault, xLabel: k => hhmm(k) };
+}
+
+/* ---------- Timeline ---------- */
+let lastRun = null, play = null;
+function drawTimeline(playK) {
+  const cv = $('tl'), dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  g.font = '11px "IBM Plex Mono", monospace';
+  const L = 118, R = 10, lv = level;
+  const r = lastRun;
+  const sensor = lv.id === 3 ? DAY_FAULT : lv.id === 2 ? DAY : null;
+  const rows = r ? r.rows : (lv.id === 1 ? [{ name: 'Target LED 13', data: Array.from({ length: 400 }, (_, k) => ((k * 10 + 5) % 1000) < 500 ? 1 : 0), color: '#46b6ff' }] :
+    [{ name: 'Target lamp', data: sensor.map(v => v === 0 || v === 1023 || v < 300 ? 1 : 0), color: '#46b6ff' }].concat(lv.id === 3 ? [{ name: 'Target warning', data: sensor.map(v => v === 0 || v === 1023 ? 1 : 0), color: '#46b6ff' }] : []));
+  const n = rows[0].data.length, sx = k => L + k / n * (w - L - R);
+  let y = 8;
+  if (sensor) {
+    const sh = 62; g.fillStyle = '#8495a7'; g.fillText('Sensor A0', 8, y + 14);
+    g.fillText('1023', L - 34, y + 9); g.fillText('0', L - 12, y + sh);
+    g.beginPath(); g.moveTo(sx(0), y + sh);
+    sensor.forEach((v, k) => g.lineTo(sx(k), y + sh - v / 1023 * sh)); g.lineTo(sx(n), y + sh); g.closePath();
+    g.fillStyle = 'rgba(255,210,122,.18)'; g.fill(); g.strokeStyle = '#ffd27a'; g.lineWidth = 1.3; g.stroke();
+    const ty = y + sh - 300 / 1023 * sh; g.setLineDash([4, 4]); g.strokeStyle = '#8495a7'; g.beginPath(); g.moveTo(L, ty); g.lineTo(w - R, ty); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#8495a7'; g.fillText('300', L - 26, ty + 4);
+    sensor.forEach((v, k) => { if (v === 0 || v === 1023) { g.fillStyle = 'rgba(255,111,94,.35)'; g.fillRect(sx(k), y, Math.max(1, sx(k + 1) - sx(k)), sh); } });
+    y += sh + 12;
+  }
+  const rh = 16, gap = 10;
+  rows.forEach(row => {
+    g.fillStyle = '#8495a7'; g.fillText(row.name, 8, y + 12);
+    g.fillStyle = '#0f1820'; g.fillRect(L, y, w - L - R, rh);
+    for (let k = 0; k < n; k++) {
+      if (row.data[k]) { g.fillStyle = row.color; g.fillRect(sx(k), y + 2, sx(k + 1) - sx(k) + 0.5, rh - 4); }
+      if (row.compare && row.data[k] !== row.compare[k]) { g.fillStyle = '#ff6f5e'; g.fillRect(sx(k), y + rh - 3, sx(k + 1) - sx(k) + 0.5, 3); }
+    }
+    y += rh + gap;
+  });
+  // time axis
+  g.fillStyle = '#5d6e80';
+  const ticks = lv.id === 1 ? [0, 100, 200, 300, 400] : [0, 360, 720, 1080, 1440];
+  ticks.forEach(k => { const x = sx(k); g.fillRect(x, y - 4, 1, 4); g.textAlign = k === 0 ? 'left' : k === n ? 'right' : 'center'; g.fillText(lv.id === 1 ? (k / 100) + ' s' : hhmm(k % 1440 === 0 && k ? 1439 : k).replace('23:59', '24:00'), x, y + 10); });
+  g.textAlign = 'left';
+  if (playK !== undefined) { g.fillStyle = 'rgba(219,229,238,.8)'; g.fillRect(sx(playK), 4, 1.5, y - 6); }
+}
+function boardAt(k) {
+  const lv = level, r = lastRun, res = r && r.res;
+  const t = lv.id === 1 ? k * 10 : k * 60000;
+  const sensor = lv.id === 3 ? DAY_FAULT : lv.id === 2 ? DAY : null;
+  const on = p => res ? stateAt(res.events, p, t) : 0;
+  $('led13').setAttribute('fill', on(13) ? '#5fd38d' : '#13301f');
+  $('led12').setAttribute('fill', on(12) ? '#ff6f5e' : '#3a1714');
+  $('lamp').setAttribute('fill', on(8) ? '#ffd27a' : '#2a2416');
+  $('lamp').style.filter = on(8) ? 'drop-shadow(0 0 10px #ffb84d)' : 'none';
+  $('rTime').textContent = lv.id === 1 ? (t / 1000).toFixed(2) + ' s' : hhmm(k);
+  $('rA0').textContent = sensor ? sensor[Math.min(1439, k)] : '—';
+  $('rLamp').textContent = on(8) ? 'ON' : 'OFF'; $('rLed').textContent = on(13) ? 'ON' : 'OFF';
+}
+function playback() {
+  cancelAnimationFrame(play); const n = lastRun.rows[0].data.length, start = performance.now(), dur = 3000;
+  const step = now => { const k = Math.min(n - 1, Math.floor((now - start) / dur * n)); drawTimeline(k); boardAt(k); if (k < n - 1) play = requestAnimationFrame(step); };
+  play = requestAnimationFrame(step);
+}
+
+/* ---------- Run ---------- */
+let hintIdx = 0;
+$('run').onclick = async () => {
+  const src = $('code').value; $('run').disabled = true; $('runInfo').textContent = 'Compiling and running…';
+  const res = await runCode(src, level);
+  $('run').disabled = false; runs[level.id] = (runs[level.id] || 0) + 1;
+  const con = $('console');
+  if (!res.ok) {
+    con.innerHTML = '<span class="err">Error: ' + esc(res.error) + '</span>'; $('runInfo').textContent = 'Run failed';
+    const box = $('result'); box.hidden = false; box.className = 'result fail'; box.innerHTML = '<div class="big">Code did not run</div><ul><li>' + esc(res.error) + '</li></ul>';
+    emit({ type: 'challenge', level: level.id, passed: false, error: res.error, runs: runs[level.id] });
+    emit({ type: 'state', state: { level: level.id, task: level.title, lastRun: 'error', error: res.error, code: src.slice(0, 1500) } });
+    return;
+  }
+  con.textContent = res.logs.length ? res.logs.map(([t, s]) => (level.id === 1 ? (t / 1000).toFixed(2) + 's' : hhmm(t / 60000)) + '  ' + s).join('\n') : 'No Serial output.';
+  const gr = grade(res); lastRun = Object.assign(gr, { res });
+  const box = $('result'); box.hidden = false; box.className = 'result ' + (gr.pass ? 'pass' : 'fail');
+  box.innerHTML = '<div class="big">' + (gr.pass ? '✓ Level ' + level.id + ' passed' : 'Not yet: ' + Math.round(gr.match * 100) + '% match') + '</div>' +
+    '<ul>' + (gr.pass ? '<li>Your output matches the target ' + (gr.match * 100).toFixed(1) + '% of the time.</li>' : '') + gr.msgs.map(m => '<li>' + esc(m) + '</li>').join('') + '</ul>';
+  $('runInfo').textContent = 'Run ' + runs[level.id] + ' · ' + (gr.pass ? 'passed' : Math.round(gr.match * 100) + '% match');
+  if (gr.pass && !done[level.id]) { done[level.id] = true; renderLevels(); }
+  emit({ type: 'challenge', level: level.id, passed: gr.pass, match: +gr.match.toFixed(3), runs: runs[level.id] });
+  emit({ type: 'state', state: { level: level.id, task: level.title, passed: gr.pass, matchPercent: Math.round(gr.match * 100), mismatches: gr.msgs, code: src.slice(0, 1500) } });
+  playback();
+};
+$('hintBtn').onclick = () => {
+  const h = level.hints; if (!h) return; const i = Math.min(hintIdx, h.length - 1);
+  $('hints').innerHTML = h.slice(0, i + 1).map(t => '<div class="hint">' + esc(t) + '</div>').join(''); hintIdx++;
+  emit({ type: 'inspect', fault: 'level-' + level.id, hintLevel: i + 1, hint: h[i] });
+};
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+/* ---------- Level 4: ML ---------- */
+const FEATS = [{ k: 'Light', u: 'lux' }, { k: 'CO2', u: 'ppm' }, { k: 'Temperature', u: '°C' }, { k: 'Humidity', u: '%' }];
+let DATA = null, dataName = '', model = null;
+function synthData() {
+  // Simulated 3-day classroom log, per minute, same columns as the UCI Occupancy Detection data
+  const r = rng(42), rows = [];
+  for (let d = 0; d < 3; d++) {
+    let co2 = 430, temp = 20.4, hum = 24 + r() * 3;
+    const sunny = d === 1;
+    for (let m = 0; m < 1440; m++) {
+      const h = m / 60;
+      const inClass = (h >= 8.5 && h < 12.8) || (h >= 13.6 && h < 17.4 + (d === 2 ? 0.6 : 0));
+      const occ = inClass && r() > 0.02 ? 1 : 0;
+      const daylight = h > 6.5 && h < 18.5 ? Math.sin(Math.PI * (h - 6.5) / 12) * (sunny ? 260 : 120) : 0;
+      let lightsOn = occ ? (r() > (sunny ? 0.14 : 0.03)) : 0;
+      if (!occ && ((h >= 19 && h < 19.75 && d !== 1) || (h >= 7.3 && h < 7.7))) lightsOn = 1; // cleaners / early staff
+      const light = Math.max(0, daylight + (lightsOn ? 430 + r() * 40 : 0) + (r() - 0.5) * 20);
+      co2 += occ ? (1150 - co2) * 0.02 + (r() - 0.5) * 6 : (430 - co2) * 0.012 + (r() - 0.5) * 3;
+      temp += occ ? (22.6 - temp) * 0.008 : (20.3 - temp) * 0.004; temp += (r() - 0.5) * 0.03;
+      hum += (r() - 0.5) * 0.08 + (occ ? 0.004 : -0.002);
+      rows.push({ day: d, min: m, Light: +light.toFixed(1), CO2: +co2.toFixed(1), Temperature: +temp.toFixed(2), Humidity: +hum.toFixed(2), Occupancy: occ });
+    }
+  }
+  return rows;
+}
+async function loadData() {
+  if (DATA) return;
+  try { const r = await fetch('data/occupancy.json'); if (r.ok) { const j = await r.json(); DATA = j.rows; dataName = j.source; } } catch (e) {}
+  if (!DATA) { DATA = synthData(); dataName = 'Simulated classroom sensor log (3 days, 1 reading per minute). Same columns as the UCI Occupancy Detection dataset.'; }
+  $('dataSrc').textContent = 'Data: ' + dataName;
+}
+function trainLR(X, y, epochs = 500, lr = 0.6) {
+  const d = X[0].length, w = new Array(d).fill(0); let b = 0;
+  for (let ep = 0; ep < epochs; ep++) {
+    const gw = new Array(d).fill(0); let gb = 0;
+    for (let i = 0; i < X.length; i++) { let z = b; for (let j = 0; j < d; j++) z += w[j] * X[i][j]; const p = 1 / (1 + Math.exp(-z)), e = p - y[i]; gb += e; for (let j = 0; j < d; j++) gw[j] += e * X[i][j]; }
+    b -= lr * gb / X.length; for (let j = 0; j < d; j++) w[j] -= lr * gw[j] / X.length;
+  }
+  return { w, b };
+}
+let mlPredicted = false;
+function initML() {
+  loadData();
+  if (!$('feats').children.length) {
+    $('feats').innerHTML = FEATS.map((f, i) => `<label><input type="checkbox" value="${f.k}" ${i === 0 ? 'checked' : ''}> ${f.k === 'CO2' ? 'CO₂' : f.k}</label>`).join('');
+    $('conf').innerHTML = '<div class="h"></div><div class="h">Model: empty</div><div class="h">Model: occupied</div><div class="h">Really empty</div><div class="n" id="tn">—</div><div class="n" id="fp">—</div><div class="h">Really occupied</div><div class="n" id="fn">—</div><div class="n" id="tp">—</div>';
+  }
+  if (!mlPredicted) {
+    const Q = { id: 'best-sensor', q: 'Before training: which single sensor do you think best tells if people are in a classroom?',
+      opts: [{ t: 'Temperature: bodies warm the room', mis: 'Room temperature reacts quickly to people' }, { t: 'Light: people switch the lamps on', ok: true }, { t: 'Humidity: people breathe out water', mis: 'Humidity is a strong sign of people' }] };
+    $('mlPredict').innerHTML = '<div class="eyebrow" style="color:var(--ai)">Predict first</div><b>' + Q.q + '</b><div class="opts">' + Q.opts.map((o, i) => `<button data-i="${i}">${o.t}</button>`).join('') + '</div><div id="mlFb" style="font-size:13.5px"></div>';
+    $('mlPredict').querySelectorAll('button').forEach(b => b.onclick = () => {
+      const o = Q.opts[+b.dataset.i]; mlPredicted = true;
+      $('mlPredict').querySelectorAll('button').forEach((x, k) => { x.disabled = true; if (Q.opts[k].ok) x.classList.add('ok'); else if (x === b) x.classList.add('no'); });
+      $('mlFb').textContent = (o.ok ? 'Good guess. ' : 'Interesting guess. ') + 'Now test it: train one model per sensor (tick only one box at a time) and compare accuracy. Then try combining sensors.';
+      emit({ type: 'prediction', question: Q.id, choice: o.t, correct: !!o.ok, misconception: o.mis || null });
+    });
+  }
+}
+$('train').onclick = async () => {
+  await loadData();
+  const feats = [...$('feats').querySelectorAll('input:checked')].map(i => i.value);
+  if (!feats.length) { $('acc').textContent = 'Pick a sensor'; return; }
+  const days = [...new Set(DATA.map(r => r.day))], testDay = days[days.length - 1];
+  const tr = DATA.filter((r, i) => r.day !== testDay && i % 2 === 0), te = DATA.filter(r => r.day === testDay);
+  const mean = {}, sd = {};
+  feats.forEach(f => { const v = tr.map(r => r[f]); mean[f] = v.reduce((a, b) => a + b, 0) / v.length; sd[f] = Math.sqrt(v.reduce((a, b) => a + (b - mean[f]) ** 2, 0) / v.length) || 1; });
+  const X = rows => rows.map(r => feats.map(f => (r[f] - mean[f]) / sd[f]));
+  const t0 = performance.now(); const m = trainLR(X(tr), tr.map(r => r.Occupancy)); const ms = performance.now() - t0;
+  const Xt = X(te), pred = Xt.map(x => (m.b + x.reduce((s, v, j) => s + v * m.w[j], 0)) > 0 ? 1 : 0);
+  let tp = 0, tn = 0, fp = 0, fn = 0; te.forEach((r, i) => { const p = pred[i]; if (p && r.Occupancy) tp++; else if (!p && !r.Occupancy) tn++; else if (p) fp++; else fn++; });
+  const acc = (tp + tn) / te.length;
+  const base = te.filter(r => (r.Light > 300 ? 1 : 0) === r.Occupancy).length / te.length;
+  model = { feats, mean, sd, ...m, acc };
+  $('acc').textContent = (acc * 100).toFixed(1) + '%';
+  $('baseline').textContent = 'Simple rule “Light > 300” scores ' + (base * 100).toFixed(1) + '% · trained on ' + tr.length + ' readings in ' + Math.max(1, Math.round(ms)) + ' ms';
+  $('tn').textContent = tn + ' min'; $('fp').textContent = fp + ' min wasted'; $('fn').textContent = fn + ' min in dark'; $('tp').textContent = tp + ' min';
+  const maxW = Math.max(...m.w.map(Math.abs));
+  $('bars').innerHTML = feats.map((f, j) => `<div class="barrow"><span>${f === 'CO2' ? 'CO₂' : f}</span><span class="track"><i style="width:${(Math.abs(m.w[j]) / maxW * 100).toFixed(0)}%"></i></span><span style="font-family:var(--mono)">${m.w[j] >= 0 ? '+' : ''}${m.w[j].toFixed(2)}</span></div>`).join('') +
+    '<span class="src">Positive weight: a higher reading makes the model more sure people are there. Readings are scaled first, so weights compare fairly.</span>';
+  // export
+  const pins = { Light: 'A0', CO2: 'A1', Temperature: 'A2', Humidity: 'A3' };
+  const lines = feats.map((f, j) => `  float ${f.toLowerCase()} = read${f}(); // sensor on ${pins[f]}`);
+  const score = feats.map((f, j) => `${m.w[j] >= 0 ? '+ ' : '- '}${Math.abs(m.w[j]).toFixed(3)} * (${f.toLowerCase()} - ${mean[f].toFixed(1)}) / ${sd[f].toFixed(2)}`).join('\n              ');
+  $('export').textContent = `// Occupancy model trained in PulseENTC (logistic regression)\n// Test accuracy: ${(acc * 100).toFixed(1)}% on an unseen day\n#define LAMP 8\n\nvoid setup() { pinMode(LAMP, OUTPUT); }\n\nvoid loop() {\n${lines.join('\n')}\n  float score = ${m.b.toFixed(3)}\n              ${score};\n  // score > 0 means the model thinks people are in the room\n  digitalWrite(LAMP, score > 0 ? HIGH : LOW);\n  delay(60000);\n}`;
+  drawML(te, pred);
+  if (acc > 0.9) { done[4] = true; renderLevels(); }
+  emit({ type: 'ml', features: feats, accuracy: +acc.toFixed(3), baseline: +base.toFixed(3), wasted: fp, inDark: fn });
+  emit({ type: 'state', state: { level: 4, task: 'Train occupancy classifier', features: feats, accuracyPercent: +(acc * 100).toFixed(1), baselinePercent: +(base * 100).toFixed(1), minutesWasted: fp, minutesInDark: fn, weights: Object.fromEntries(feats.map((f, j) => [f, +m.w[j].toFixed(2)])) } });
+};
+function drawML(te, pred) {
+  const cv = $('mlTl'), dpr = Math.min(devicePixelRatio || 1, 2), w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h); g.font = '11px "IBM Plex Mono", monospace';
+  const L = 118, R = 10, n = te.length, sx = k => L + k / n * (w - L - R);
+  const rows = [{ name: 'Really occupied', d: te.map(r => r.Occupancy), c: '#46b6ff' }, { name: 'Model says', d: pred, c: '#b693ff', cmp: te.map(r => r.Occupancy) }];
+  let y = 14;
+  rows.forEach(r => { g.fillStyle = '#8495a7'; g.fillText(r.name, 8, y + 13); g.fillStyle = '#0f1820'; g.fillRect(L, y, w - L - R, 20);
+    for (let k = 0; k < n; k++) { if (r.d[k]) { g.fillStyle = r.c; g.fillRect(sx(k), y + 3, sx(k + 1) - sx(k) + .5, 14); } if (r.cmp && r.d[k] !== r.cmp[k]) { g.fillStyle = '#ff6f5e'; g.fillRect(sx(k), y + 17, sx(k + 1) - sx(k) + .5, 3); } }
+    y += 34; });
+  g.fillStyle = '#5d6e80'; [0, 360, 720, 1080].forEach(k => { if (k < n) g.fillText(te[k].min !== undefined ? hhmm(te[k].min) : '', sx(k), y + 8); });
+  g.fillStyle = '#ff6f5e'; g.fillText('red marks = model mistakes', L, y + 26);
+}
+$('copy').onclick = () => { const t = $('export').textContent; navigator.clipboard && navigator.clipboard.writeText(t).then(() => $('copy').textContent = 'Copied', () => {}); };
+
+/* ---------- Platform contract ---------- */
+window.addEventListener('message', e => { const d = e.data || {}; if (d.type === 'setLevel' && LEVELS.find(l => l.id === d.level)) setLevel(d.level); });
+try { const p = new URLSearchParams(location.search); const l = +p.get('level'); if (l) level = LEVELS.find(x => x.id === l) || level; } catch (e) {}
+renderLevels(); setLevel(level.id);
+new ResizeObserver(() => drawTimeline()).observe($('tl'));
+})();
+</script>
+</body></html>
