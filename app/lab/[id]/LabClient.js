@@ -10,6 +10,7 @@ import s from './lab.module.css';
 const QUICK = {
   'opamp': ['Why is the sound harsh?', 'Explain the gain formula', 'Give me a hint for the repair'],
   'pn-junction': ['Why does the depletion region widen?', 'What is the knee voltage?', 'Explain the band diagram'],
+  'logic': ['How do I design the fire alarm?', 'Why is NAND universal?', 'Tips for Gate Blitz'],
   'iot': ['Why is my code failing?', 'What does analogRead return?', 'Which sensor matters most for the model?']
 };
 
@@ -40,7 +41,8 @@ export default function LabClient({ labId }) {
       const p = getProfile();
       logEvent({ class_code: p.classCode || 'DEMO', student: p.name || 'Anonymous', lab: labId, type: d.type, question: d.question || (d.level ? 'level-' + d.level : d.fault || null), choice: d.choice || null, correct: d.correct ?? d.passed ?? d.success ?? null, misconception: d.misconception || null, payload: d });
       if (d.type === 'repair' && d.success) flash('Repair saved to your progress ✓');
-      if (d.type === 'challenge' && d.passed) flash(`Level ${d.level} passed ✓`);
+      if (d.type === 'challenge' && d.passed) flash(labId === 'logic' ? `Circuit ${d.level} works ✓` : `Level ${d.level} passed ✓`);
+      if (d.type === 'quiz') flash(`Gate Blitz score: ${d.score}`);
       if (d.type === 'ml') flash(`Model trained: ${Math.round(d.accuracy * 100)}% accuracy`);
       if (d.type === 'prediction' && d.misconception) setMsgs(m => [...m, { role: 'ai', text: `I noticed a common misconception: “${d.misconception}”. Watch the simulation closely, then ask me if it still feels strange.`, tag: 'Misconception Miner' }]);
     };

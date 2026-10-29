@@ -56,3 +56,5 @@
   .slide { grid-template-columns: 24px minmax(0, 1fr); }
   .slideAct, .none { grid-column: 2; }
 }
+.heatRow .mono { color: var(--fg); }
+.feed { grid-template-columns: 72px 1fr; }

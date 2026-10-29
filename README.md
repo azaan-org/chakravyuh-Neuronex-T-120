@@ -10,6 +10,7 @@ ENTC students learn from static slides and crowded labs, so theory rarely meets 
 |---|---|---|---|
 | **Op-Amp Repair** | The singer's mic preamp sounds harsh at the college fest | Predict the output, see clipping on a live scope, hear it, repair the gain | Analog, signal processing |
 | **PN Junction 3D** | Why a phone charger survives reverse plugging | Bias a 3D diode, watch carriers and depletion region, I–V curve, band diagram | Semiconductors |
+| **Digital Logic** | The hostel fire alarm rings for toast | Predict gate outputs, design fire-alarm, staircase-light and level-crossing circuits against a truth table, 60-second Gate Blitz | Digital electronics |
 | **Smart Classroom IoT + ML** | Lights left on in empty classrooms | Write Arduino-style code run on a virtual board over a simulated day (3 graded levels), then train an occupancy classifier in the browser and export it as Arduino code | Microcontrollers, sensors, IoT, ML |
 
 **Platform features**
@@ -18,17 +19,17 @@ ENTC students learn from static slides and crowded labs, so theory rarely meets 
 - **AI Fault Inspector**: the fault is detected by deterministic rules, the explanation is a hint ladder.
 - **Professor dashboard**: upload a `.pptx` deck → each slide is tagged with the matching lab → "Show to class" QR code → live misconception heatmap, lab stumbling blocks, AI teaching suggestion.
 - **Student progress**: labs done, predictions correct, misconceptions fixed, challenges passed, best model accuracy.
-- Every AI call has an offline fallback, so the demo never breaks.
+- Runs fully offline from one laptop; every AI call has a local fallback, so the demo never breaks.
 
 ## Feature coverage vs problem statement
 
 | Suggested feature | PulseENTC |
 |---|---|
 | Interactive learning | Slide → lab matching, predict-first labs |
-| Virtual electronics lab | Op-amp, PN junction, virtual microcontroller board |
+| Virtual electronics lab | Op-amp, PN junction, logic gates, virtual microcontroller board |
 | AI learning assistant | PulseAI tutor with live lab state, Fault Inspector |
-| Coding challenges | Arduino-style IoT levels, op-amp repair challenge |
-| Quizzes & mini-games | Predict questions in every lab |
+| Coding challenges | Arduino-style IoT levels, logic circuit design, op-amp repair challenge |
+| Quizzes & mini-games | Predict questions in every lab, 60-second Gate Blitz timed quiz |
 | Real-world simulations | Every lab is a real scenario; smart classroom IoT |
 | Progress tracking | Student progress strip + professor analytics |
 
@@ -41,8 +42,7 @@ Next.js (App Router), served from the presenting laptop
 ├── /professor           Deck upload, QR, live heatmap, AI suggestion
 ├── /api/ai              Gemini calls (key stays on the server) + fallbacks
 └── /public/labs/*.html  Self-contained labs (work offline)
-Supabase
-└── events               Every prediction/repair/challenge, Realtime → heatmap
+/api/events              Local event store on the laptop (data/events.json); the dashboard polls it
 ```
 
 **Lab contract:** each lab reads URL params (`?mode=predict`) and posts `postMessage` events (`prediction`, `summary`, `repair`, `challenge`, `ml`, `inspect`, `state`) to the platform. New labs plug in without platform changes.
@@ -57,7 +57,8 @@ npm run demo                 # builds and serves on port 3000, reachable from ph
 
 1. Find the laptop's Wi-Fi address: `ipconfig` (Windows) or `ipconfig getifaddr en0` (Mac), e.g. `192.168.1.20`.
 2. Open `http://192.168.1.20:3000/professor` on the laptop and put `http://192.168.1.20:3000` in **Address phones use to reach this laptop**. The QR codes then work on phones connected to the same Wi-Fi or hotspot.
-3. The laptop needs internet for the live heatmap (Supabase) and the Gemini tutor. Without internet, labs, progress and offline AI answers still work.
+3. **No internet needed.** Fonts, the 3D library and the event store all run from the laptop. The AI tutor uses Gemini if a key and internet are available, otherwise a local Ollama model if `OLLAMA_MODEL` is set, otherwise built-in answers that still use the live lab numbers.
+4. Reset between demo runs with **Clear class data** on the Professor page.
 
 For development: `npm run dev`.
 

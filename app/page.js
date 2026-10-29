@@ -42,6 +42,7 @@ export default function Home() {
         <div className={s.stat}><b>{sum ? sum.correct : 0}<small>/{sum ? sum.predictions : 0}</small></b><span>Predictions correct</span></div>
         <div className={s.stat}><b>{sum ? sum.fixed : 0}<small>/{sum ? sum.misconceptions : 0}</small></b><span>Misconceptions fixed</span></div>
         <div className={s.stat}><b>{sum ? sum.repairs + sum.challenges : 0}</b><span>Repairs &amp; code challenges</span></div>
+        <div className={s.stat}><b>{sum?.quizBest || '—'}</b><span>Gate Blitz best</span></div>
         <div className={s.stat}><b>{sum?.ml ? Math.round(sum.ml.accuracy * 100) + '%' : '—'}</b><span>Your best AI model</span></div>
         {sum && sum.open.length > 0 && (
           <div className={s.open}>

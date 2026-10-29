@@ -66,6 +66,12 @@ function tutorFallback(labId, q, st) {
     if (ql.includes('knee') || st?.regime === 'Conducting' || st?.regime === 'Below knee') return f.forward + live;
     return f.default + live;
   }
+  if (labId === 'logic') {
+    if (ql.includes('blitz') || ql.includes('tips')) return f.blitz;
+    if (st?.section === 'build' || ql.includes('design') || ql.includes('alarm')) return f.build + (st && st.wrongRows ? ` Right now ${st.wrongRows} rows of “${st.circuit}” are still wrong.` : '');
+    if (ql.includes('universal')) return 'Tie both inputs of a NAND together and it becomes NOT. A NAND followed by that NOT is AND. Put NOT on each input of a NAND and you get OR. Since AND, OR and NOT can build any logic, NAND alone can too.';
+    return f.default;
+  }
   if (st?.level === 4 || ql.includes('model') || ql.includes('sensor matters')) return f.ml + (st?.accuracyPercent ? ` Your current model scores ${st.accuracyPercent}% using ${st.features.join(', ')}.` : '');
   if (st?.mismatches?.length) return f.code + ' Your latest run says: ' + st.mismatches[0];
   return f.default;

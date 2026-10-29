@@ -15,6 +15,7 @@ const SAMPLE_DECK = [
   'Output Saturation\nOutput swing limited to approximately ±(Vcc − 1 V); clipping when the gain is too high',
   'Unit 2 Recap: PN Junction Diode\nDepletion region, barrier potential 0.7 V (Si), forward and reverse bias',
   'Diode I–V Characteristics\nKnee voltage, reverse saturation current, Shockley equation',
+  'Combinational Logic Design\nLogic gates, truth tables, NAND and NOR as universal gates',
   'Applications in Embedded Systems\nArduino reads an LDR sensor with analogRead; IoT smart classroom automation',
   'Assignment 3\nSubmit by Friday · Q1–Q5 from the textbook'
 ];
@@ -125,6 +126,7 @@ export default function Professor() {
       if (rnd() < 0.7) rows.push({ class_code: code, student, lab: 'opamp', type: 'repair', question: 'repair', correct: true, payload: { demo: true, hintsUsed: Math.floor(rnd() * 3) } });
       for (let lv = 1; lv <= 3; lv++) if (rnd() < 0.8 - lv * 0.15) rows.push({ class_code: code, student, lab: 'iot', type: 'challenge', question: 'level-' + lv, correct: rnd() < 0.75, payload: { demo: true, level: lv } });
       if (rnd() < 0.5) rows.push({ class_code: code, student, lab: 'iot', type: 'ml', question: 'ml', correct: true, payload: { demo: true, accuracy: 0.9 + rnd() * 0.08 } });
+      for (let lv = 1; lv <= 3; lv++) if (rnd() < 0.85 - lv * 0.12) rows.push({ class_code: code, student, lab: 'logic', type: 'challenge', question: 'level-' + lv, correct: true, payload: { demo: true, level: lv } });
       if (rnd() < 0.6) rows.push({ class_code: code, student, lab: 'opamp', type: 'inspect', question: 'clipping', payload: { demo: true } });
     }
     await insertEvents(rows);
@@ -203,7 +205,7 @@ export default function Professor() {
         <div><b>{agg.preds}</b><span>Predictions made</span></div>
         <div><b>{pct(agg.correct, agg.preds)}%</b><span>Predicted correctly</span></div>
         <div><b>{agg.repairs}</b><span>Op-amp repairs solved</span></div>
-        <div><b>{agg.levelsPassed}<small>/{agg.levelsTried}</small></b><span>Code levels passed</span></div>
+        <div><b>{agg.levelsPassed}<small>/{agg.levelsTried}</small></b><span>Code &amp; circuit levels passed</span></div>
         <div><b>{agg.ml.length ? Math.round(agg.ml.reduce((a, b) => a + b, 0) / agg.ml.length * 100) + '%' : '—'}</b><span>Avg AI model accuracy</span></div>
       </section>
 
