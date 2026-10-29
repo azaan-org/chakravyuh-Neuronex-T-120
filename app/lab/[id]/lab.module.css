@@ -29,3 +29,6 @@
   .frame { height: 82dvh; }
   .chat { border-left: 0; border-top: 1px solid var(--line); max-height: 70dvh; }
 }
+.tabs { display: flex; border-bottom: 1px solid var(--line); }
+.tabs button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 12px 8px; cursor: pointer; color: var(--muted); font-weight: 600; font-size: 14px; }
+.tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }

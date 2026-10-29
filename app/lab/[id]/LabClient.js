@@ -5,6 +5,7 @@ import { LABS, MODULES } from '@/lib/labs';
 import { recordEvent, markOpened, getProfile, setProfile } from '@/lib/progress';
 import { logEvent } from '@/lib/events';
 import { ProfileModal } from '@/components/Nav';
+import Forum from '@/components/Forum';
 import s from './lab.module.css';
 
 const QUICK = {
@@ -26,6 +27,7 @@ export default function LabClient({ labId }) {
   const [toast, setToast] = useState(null);
   const [ask, setAsk] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
+  const [tab, setTab] = useState('tutor');
   const chatEnd = useRef(null);
 
   useEffect(() => {
@@ -93,7 +95,11 @@ export default function LabClient({ labId }) {
         {src && <iframe ref={frame} src={src} title={lab.title} className={s.frame} allow="autoplay; clipboard-write" />}
         {chatOpen && (
           <aside className={s.chat} aria-label="AI tutor">
-            <div className={s.chatHead}><span className={s.dot} /> <b>PulseAI tutor</b><span className="chip" style={{ marginLeft: 'auto' }}>sees your live lab</span></div>
+            <div className={s.tabs} role="tablist">
+              <button role="tab" aria-selected={tab === 'tutor'} onClick={() => setTab('tutor')}><span className={s.dot} /> PulseAI tutor</button>
+              <button role="tab" aria-selected={tab === 'forum'} onClick={() => setTab('forum')}>Class discussion</button>
+            </div>
+            {tab === 'forum' ? <Forum lab={labId} compact getState={() => state.current} /> : <>
             <div className={s.msgs}>
               {msgs.map((m, i) => (
                 <div key={i} className={m.role === 'me' ? s.me : s.ai}>
@@ -109,6 +115,7 @@ export default function LabClient({ labId }) {
               <input className="field" id="ask" value={input} onChange={e => setInput(e.target.value)} placeholder="Ask about what you see…" aria-label="Ask PulseAI" />
               <button className="btn btn-primary" disabled={busy || !input.trim()}>Ask</button>
             </form>
+            </>}
           </aside>
         )}
       </div>
