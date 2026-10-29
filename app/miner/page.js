@@ -35,9 +35,10 @@ export default function Miner() {
   const [sel, setSel] = useState(null);
   const [coach, setCoach] = useState(null);
   const [pick, setPick] = useState(null);
+  const [me, setMe] = useState('You');
 
   useEffect(() => {
-    const sync = () => setProg(getProgress());
+    const sync = () => { setProg(getProgress()); setMe((getProfile().name || 'You').split(' ')[0].slice(0, 9)); };
     sync(); window.addEventListener('pulse-progress', sync);
     return () => window.removeEventListener('pulse-progress', sync);
   }, []);
@@ -124,7 +125,7 @@ export default function Miner() {
               </g>
             ))}
             <circle cx={cx} cy={cy} r="38" fill="#ffd27a" />
-            <text x={cx} y={cy + 6} textAnchor="middle" className={s.you}>{(getProfile().name || 'You').split(' ')[0].slice(0, 9)}</text>
+            <text x={cx} y={cy + 6} textAnchor="middle" className={s.you}>{me}</text>
           </svg>
           <div className={s.legend}>{Object.entries(STATUS).map(([k, v]) => <span key={k}><i style={{ background: v.color }} />{v.label}</span>)}</div>
         </div>

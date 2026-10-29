@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { MODULES, LAB_LIST } from '@/lib/labs';
 import { getProgress, summarize, getProfile, setProfile, resetProgress } from '@/lib/progress';
 import { ProfileModal } from '@/components/Nav';
+import Hero3D from '@/components/Hero3D';
 import s from './home.module.css';
 
 export default function Home() {
@@ -23,17 +24,23 @@ export default function Home() {
   const STATUS = { new: ['Not started', 'var(--muted)'], started: ['In progress', 'var(--warn)'], done: ['Completed', 'var(--ok)'] };
 
   return (
-    <main className="wrap" style={{ paddingBlock: '28px 60px' }}>
+    <main className="wrap" style={{ paddingBlock: '20px 60px' }}>
       <section className={s.hero}>
-        <div>
-          <div className="eyebrow">B.E. Electronics &amp; Telecommunication · Semester V</div>
-          <h1 className={`display ${s.h1}`}>{prof?.name ? `Welcome back, ${prof.name.split(' ')[0]}.` : 'Your ENTC lab, in the browser.'}</h1>
-          <p className={s.lead}>Every lab starts with a real problem. Predict what will happen, experiment, then repair or code the fix. The AI tutor sees your live circuit and helps you think, it doesn’t hand out answers.</p>
-        </div>
-        <div className={`card ${s.loop}`} aria-label="How each lab works">
-          {['Predict', 'Observe', 'Repair / Code', 'Explain'].map((t, i) => (
-            <div key={t} className={s.loopStep}><span>{i + 1}</span>{t}</div>
-          ))}
+        <Hero3D className={s.hero3d} />
+        <div className={s.heroText}>
+          <div className="eyebrow" style={{ color: 'var(--accent)' }}>{prof?.name ? `Welcome back, ${prof.name.split(' ')[0]} · ` : ''}B.E. Electronics &amp; Telecommunication · Semester V</div>
+          <h1 className={`display ${s.h1}`}>See the physics. Fix what you believe.</h1>
+          <p className={s.lead}>Every lab starts with a real problem. Predict what will happen, watch it in a live simulation, then repair or code the fix. PulseAI maps what you misunderstand and builds your path to fix it.</p>
+          <div className={s.ctas}>
+            <Link href={`/lab/${LAB_LIST[0].id}`} className="btn btn-primary">Start with the mic repair →</Link>
+            <Link href="/miner" className="btn btn-ghost">My Mind Map</Link>
+            <Link href="/studio" className="btn btn-ghost">Lecture Studio</Link>
+          </div>
+          <div className={s.loop} aria-label="How each lab works">
+            {['Predict', 'Observe', 'Repair / Code', 'Explain'].map((t, i) => (
+              <span key={t} className={s.loopStep}><span>{i + 1}</span>{t}</span>
+            ))}
+          </div>
         </div>
       </section>
 
