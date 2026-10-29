@@ -183,11 +183,14 @@ STUDENT ASKS: ${body.question}`;
   }
 
   if (kind === 'insight') {
-    const top = (body.top || []).slice(0, 5);
-    const fb = top.length
-      ? `Start the next lecture with the “${top[0].misconception}” misconception: ${top[0].wrong} of ${top[0].total} students chose it. Show the ${LABS[top[0].lab]?.title || 'matching'} lab live, ask the class to predict first, then reveal. ${top[1] ? `Next, revisit “${top[1].misconception}”.` : ''}`
-      : 'No class data yet. Share the class QR code and ask students to open a lab in Predict mode.';
-    const text = await gemini({ system: 'You are a teaching assistant for an ENTC professor. Given class misconception data, write a 3-sentence teaching plan for the next 10 minutes of class. Be concrete, no markdown.', prompt: JSON.stringify(top), maxTokens: 220 });
+    const top = (body.top || []).slice(0, 5), chapters = (body.chapters || []).slice(0, 4), faults = (body.faults || []).slice(0, 4), qs = (body.questions || []).slice(0, 12);
+    const parts = [];
+    if (chapters[0]) parts.push(`Spend the first 15 minutes of your next lecture on “${chapters[0].chapter}”: ${chapters[0].students} students asked the AI ${chapters[0].aiQuestions} questions about it and made ${chapters[0].circuitFaults} circuit mistakes.`);
+    if (faults[0]) parts.push(`The most common lab mistake is “${faults[0].fault}” in the ${faults[0].circuit} (${faults[0].students} students). Wire it wrong on purpose in front of the class and let them spot the fault.`);
+    if (top[0]) parts.push(`Address the misconception “${top[0].misconception}” directly: ${top[0].wrong} of ${top[0].total} students hold it. Ask the class to predict first, then show the simulator.`);
+    if (chapters[1]) parts.push(`Next priority: “${chapters[1].chapter}”.`);
+    const fb = parts.length ? parts.join(' ') : 'No class data yet. Share the join QR code and ask students to open a chapter in AI mode.';
+    const text = await gemini({ system: 'You are a teaching assistant for an Indian ENTC engineering professor. From class learning data, write a concrete plan for the next lecture in 3-4 short sentences: which chapter to focus on and why (cite the numbers), which circuit mistake to demonstrate, and which misconception to address. Plain text, no markdown.', prompt: JSON.stringify({ chapters, faults, misconceptions: top, sampleQuestions: qs }), maxTokens: 260 });
     return Response.json({ text: text || fb, source: text ? 'ai' : 'fallback' });
   }
 

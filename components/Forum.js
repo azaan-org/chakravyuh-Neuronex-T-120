@@ -9,7 +9,7 @@ function ago(iso) {
   return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : Math.round(m / 60) + ' h ago';
 }
 
-export default function Forum({ lab, compact = false, getState }) {
+export default function Forum({ lab, compact = false, getState, label }) {
   const [threads, setThreads] = useState([]);
   const [open, setOpen] = useState(null);
   const [title, setTitle] = useState('');
@@ -81,7 +81,7 @@ export default function Forum({ lab, compact = false, getState }) {
   return (
     <div className={`${s.wrap} ${compact ? s.compact : ''}`}>
       <form onSubmit={newThread} className={s.form}>
-        <input className="field" value={title} onChange={e => setTitle(e.target.value)} placeholder={lab ? `Ask the class about ${LABS[lab]?.title || 'this lab'}…` : 'Ask a question…'} aria-label="Question title" />
+        <input className="field" value={title} onChange={e => setTitle(e.target.value)} placeholder={label ? `Ask the ${label}…` : lab ? `Ask the class about ${LABS[lab]?.title || 'this lab'}…` : 'Ask a question…'} aria-label="Question title" />
         {title && <textarea className="field" rows={2} value={body} onChange={e => setBody(e.target.value)} placeholder="Add details: what you tried, what you expected (optional)" aria-label="Details" />}
         {title && <button className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>Post question</button>}
         {err && <span className={s.err}>{err}</span>}

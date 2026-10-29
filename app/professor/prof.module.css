@@ -58,3 +58,18 @@
 }
 .heatRow .mono { color: var(--fg); }
 .feed { grid-template-columns: 72px 1fr; }
+.lag { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line); }
+.lag:first-of-type { border-top: 0; }
+.rank { font: 500 14px var(--mono); color: var(--muted); padding-top: 2px; }
+.lagMain { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.lagTop { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+.bar { height: 8px; background: var(--ink); border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+.bar i { display: block; height: 100%; border-radius: 99px; }
+.lagMeta { font-size: 12.5px; color: var(--muted); }
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.table th { text-align: left; font: 500 11px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.table td { padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.qGroup { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+.q { font-size: 13.5px; }

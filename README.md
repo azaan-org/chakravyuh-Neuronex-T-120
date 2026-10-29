@@ -4,22 +4,27 @@
 
 ENTC students learn from static slides and crowded labs, so theory rarely meets practice. PulseENTC turns each lecture topic into a hands-on virtual lab where students **predict, experiment, repair and code**, while AI finds what each student misunderstands and shows the professor where the whole class is stuck.
 
-## What's inside
+## How it works
 
-| Lab | Real-world scenario | Student does | Topics |
-|---|---|---|---|
-| **Op-Amp Repair** | The singer's mic preamp sounds harsh at the college fest | Predict the output, see clipping on a live scope, hear it, repair the gain | Analog, signal processing |
-| **PN Junction 3D** | Why a phone charger survives reverse plugging | Bias a 3D diode, watch carriers and depletion region, I–V curve, band diagram | Semiconductors |
-| **Digital Logic** | The hostel fire alarm rings for toast | Predict gate outputs, design fire-alarm, staircase-light and level-crossing circuits against a truth table, 60-second Gate Blitz | Digital electronics |
-| **Smart Classroom IoT + ML** | Lights left on in empty classrooms | Write Arduino-style code run on a virtual board over a simulated day (3 graded levels), then train an occupancy classifier in the browser and export it as Arduino code | Microcontrollers, sensors, IoT, ML |
+**Problem:** many colleges have limited lab equipment and little practical teaching. PulseENTC lets ENTC students learn every concept in a practical, digital way, and shows professors exactly where students struggle.
 
-**Platform features**
-- **Predict → Observe → Explain** in every lab, with each wrong answer mapped to a named misconception (*Misconception Miner*).
-- **PulseAI tutor** beside every lab. It receives the live simulator state, so it can't contradict the physics, and gives hints before answers.
-- **AI Fault Inspector**: the fault is detected by deterministic rules, the explanation is a hint ladder.
-- **Professor dashboard**: upload a `.pptx` deck → each slide is tagged with the matching lab → "Show to class" QR code → live misconception heatmap, lab stumbling blocks, AI teaching suggestion.
-- **Student progress**: labs done, predictions correct, misconceptions fixed, challenges passed, best model accuracy.
-- Runs fully offline from one laptop; every AI call has a local fallback, so the demo never breaks.
+### Student
+1. **Login** → the college's **ENTC curriculum** (subjects → chapters), synced from Moodle/Juno (demo).
+2. **Chapter page:** the professor's uploaded **PPT/PDF** on the left, **AI mode** on the right:
+   - **AI Teacher:** teaches from the professor's material, answers questions, "Explain this slide".
+   - **Summary & key formulas**, **step-wise breakdown**, **suggested courses**.
+   - **Simulators** for the chapter (3D models and circuit workbenches).
+3. **Circuit workbench:** a **reference simulator** with the correct circuit beside a breadboard where the student **wires the circuit themselves**. The **AI Fault Inspector** detects wrong connections (short circuit, reversed LED/diode, missing resistor, positive feedback, floating input, wrong pin, scope in the wrong place) and suggests the fix. Workbenches: LED circuit, half-wave rectifier, inverting op-amp, Arduino pin 13 LED.
+4. **Network:** study groups per subject, class discussions (AI-seeded), classmates list; "Ask classmates" posts a circuit with the AI's diagnosis.
+5. **My Progress:** personal misconception mind map with fix paths.
+
+### Professor
+1. **Study Materials:** upload PPTX/PDF per chapter; text is extracted so the AI can teach from it.
+2. **Insights:** chapters where students are lagging (AI questions, circuit faults, wrong answers), most common circuit mistakes, what students ask the AI, students who need attention, misconception heatmap, and an AI suggestion for the next lecture.
+3. **Lecture Studio:** present slides with the matching simulation live beside each slide, with a class QR code.
+
+### Also included
+3D PN junction, Op-Amp clipping repair (with sound), Digital Logic lab with Gate Blitz, Smart Classroom IoT lab (Arduino code + 3D digital twin + in-browser ML).
 
 ## Feature coverage vs problem statement
 
@@ -37,9 +42,14 @@ ENTC students learn from static slides and crowded labs, so theory rarely meets 
 
 ```
 Next.js (App Router), served from the presenting laptop
-├── /                    Student home: modules, labs, progress
-├── /lab/[id]            Scenario + lab iframe + PulseAI tutor
-├── /professor           Deck upload, QR, live heatmap, AI suggestion
+├── /login               Student / professor sign-in
+├── /                    Student curriculum
+├── /learn/[chapter]     Professor material + AI mode
+├── /workbench/[id]      Reference + build-it-yourself circuit + AI fault inspector
+├── /network             Study groups, discussions, classmates
+├── /lab/[id]            3D / interactive simulators + PulseAI tutor
+├── /professor           Insights dashboard
+├── /professor/materials PPTX/PDF upload per chapter (/api/materials)
 ├── /api/ai              Gemini calls (key stays on the server) + fallbacks
 └── /public/labs/*.html  Self-contained labs (work offline)
 /api/events              Local event store on the laptop (data/events.json); the dashboard polls it

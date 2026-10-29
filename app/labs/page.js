@@ -5,6 +5,8 @@ import { MODULES, LAB_LIST } from '@/lib/labs';
 import { getProgress, summarize, getProfile, setProfile, resetProgress } from '@/lib/progress';
 import { ProfileModal } from '@/components/Nav';
 import Hero3D from '@/components/Hero3D';
+import { WORKBENCH_LIST } from '@/lib/workbench';
+import { chapterById } from '@/lib/curriculum';
 import s from './home.module.css';
 
 export default function Home() {
@@ -34,7 +36,7 @@ export default function Home() {
           <div className={s.ctas}>
             <Link href={`/lab/${LAB_LIST[0].id}`} className="btn btn-primary">Start with the mic repair →</Link>
             <Link href="/miner" className="btn btn-ghost">My Mind Map</Link>
-            <Link href="/studio" className="btn btn-ghost">Lecture Studio</Link>
+            <Link href="/" className="btn btn-ghost">My curriculum</Link>
           </div>
           <div className={s.loop} aria-label="How each lab works">
             {['Predict', 'Observe', 'Repair / Code', 'Explain'].map((t, i) => (
@@ -57,6 +59,18 @@ export default function Home() {
             {sum.open.slice(0, 4).map(m => <span key={m} className="chip" style={{ borderColor: 'rgba(255,111,94,.5)', color: 'var(--fg)' }}>{m}</span>)}
           </div>
         )}
+      </section>
+
+      <section className={s.module}>
+        <div className={s.modHead}><span className="eyebrow">Build it yourself</span><h2 className={s.h2}>Circuit workbenches</h2><span className={s.modBlurb}>Reference circuit + wire it yourself + AI fault detection</span></div>
+        <div className={s.benchGrid}>
+          {WORKBENCH_LIST.map(b => (
+            <Link key={b.id} href={`/workbench/${b.id}`} className={`card ${s.bench}`}>
+              <span className="eyebrow" style={{ color: 'var(--ok)' }}>{b.ref.length} connections · {chapterById(b.chapter)?.title}</span>
+              <b>{b.title}</b><span>{b.goal}</span>
+            </Link>
+          ))}
+        </div>
       </section>
 
       {MODULES.map(mod => (
