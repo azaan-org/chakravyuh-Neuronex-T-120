@@ -35,7 +35,7 @@ ENTC students learn from static slides and crowded labs, so theory rarely meets 
 ## Architecture
 
 ```
-Next.js (App Router) on Vercel
+Next.js (App Router), served from the presenting laptop
 ├── /                    Student home: modules, labs, progress
 ├── /lab/[id]            Scenario + lab iframe + PulseAI tutor
 ├── /professor           Deck upload, QR, live heatmap, AI suggestion
@@ -47,13 +47,19 @@ Supabase
 
 **Lab contract:** each lab reads URL params (`?mode=predict`) and posts `postMessage` events (`prediction`, `summary`, `repair`, `challenge`, `ml`, `inspect`, `state`) to the platform. New labs plug in without platform changes.
 
-## Run locally
+## Run the demo (local, no deployment)
 
 ```bash
 npm install
-cp .env.example .env.local   # add GEMINI_API_KEY (optional)
-npm run dev
+cp .env.example .env.local   # add GEMINI_API_KEY (optional; offline answers work without it)
+npm run demo                 # builds and serves on port 3000, reachable from phones on the same Wi-Fi
 ```
+
+1. Find the laptop's Wi-Fi address: `ipconfig` (Windows) or `ipconfig getifaddr en0` (Mac), e.g. `192.168.1.20`.
+2. Open `http://192.168.1.20:3000/professor` on the laptop and put `http://192.168.1.20:3000` in **Address phones use to reach this laptop**. The QR codes then work on phones connected to the same Wi-Fi or hotspot.
+3. The laptop needs internet for the live heatmap (Supabase) and the Gemini tutor. Without internet, labs, progress and offline AI answers still work.
+
+For development: `npm run dev`.
 
 ## Physics & sources
 - Op-amp: ideal inverting amplifier, Av = −Rf/Rin, output limited to ±(Vcc − 1 V). Gayakwad, *Op-Amps and Linear Integrated Circuits*; Sedra & Smith, *Microelectronic Circuits*.

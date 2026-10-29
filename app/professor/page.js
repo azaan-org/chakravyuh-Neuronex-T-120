@@ -36,7 +36,9 @@ export default function Professor() {
   const [seeding, setSeeding] = useState(false);
   const fileRef = useRef(null);
 
-  useEffect(() => { setOrigin(location.origin); try { const c = localStorage.getItem('pulse.prof.class'); if (c) setCode(c); } catch {} }, []);
+  useEffect(() => { let o = location.origin; try { const c = localStorage.getItem('pulse.prof.class'); if (c) setCode(c); const b = localStorage.getItem('pulse.prof.base'); if (b) o = b; } catch {} setOrigin(o); }, []);
+  useEffect(() => { if (origin) try { localStorage.setItem('pulse.prof.base', origin); } catch {} }, [origin]);
+  const isLocal = /localhost|127\.0\.0\.1/.test(origin);
   useEffect(() => { try { localStorage.setItem('pulse.prof.class', code); } catch {} }, [code]);
   useEffect(() => { if (origin) QRCode.toDataURL(`${origin}/?class=${code}`, { margin: 1, width: 360, color: { dark: '#0a0f15', light: '#ffffff' } }).then(setJoinQR); }, [origin, code]);
 
@@ -174,6 +176,9 @@ export default function Professor() {
           <h2 className={s.h2}>Students join here</h2>
           {joinQR ? <img src={joinQR} alt={`QR code to join class ${code}`} className={s.qr} /> : <div className={s.qr} />}
           <span className={s.mono}>{origin.replace(/^https?:\/\//, '')}/?class={code}</span>
+          <label htmlFor="base" className="eyebrow" style={{ alignSelf: 'stretch', textAlign: 'left' }}>Address phones use to reach this laptop</label>
+          <input id="base" className="field" value={origin} onChange={e => setOrigin(e.target.value.trim().replace(/\/$/, ''))} placeholder="http://192.168.1.20:3000" style={{ fontFamily: 'var(--mono)', fontSize: 13 }} />
+          {isLocal && <span className={s.err} style={{ fontSize: 12.5 }}>Phones can’t open “localhost”. Replace it with this laptop’s Wi-Fi address, e.g. http://192.168.1.20:3000 (same Wi-Fi or hotspot as the phones).</span>}
           <div className={s.row} style={{ justifyContent: 'center' }}>
             <button className="btn btn-ghost" onClick={seed} disabled={seeding}>{seeding ? 'Adding…' : 'Add demo class data'}</button>
           </div>
