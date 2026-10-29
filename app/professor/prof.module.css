@@ -1,0 +1,58 @@
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.classBox { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.live { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.live i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; align-items: start; }
+.pad { padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.secHead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.h2 { font: 600 17px var(--body); }
+.muted { color: var(--muted); margin: 0; font-size: 14px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.err { color: var(--coral); margin: 0; }
+.mono { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.join { align-items: center; text-align: center; }
+.qr { width: min(240px, 100%); aspect-ratio: 1; border-radius: 10px; background: #fff; display: block; }
+
+.slides { display: flex; flex-direction: column; gap: 6px; }
+.deckMeta { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; }
+.deckMeta span { color: var(--muted); }
+.slide { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--ink); }
+.slide.hasLab { border-color: rgba(255,210,122,.35); }
+.num { font: 500 12px var(--mono); color: var(--muted); }
+.slideText { display: flex; flex-direction: column; min-width: 0; }
+.slideText b { font-weight: 600; font-size: 14.5px; }
+.slideText span { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slideAct { display: flex; gap: 8px; align-items: center; }
+.slideAct .btn { padding: 6px 12px; font-size: 13px; }
+.none { font-size: 12px; color: var(--muted); }
+
+.stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin-bottom: 16px; overflow: hidden; }
+.stats div { padding: 14px 16px; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+.stats div:last-child { border-right: 0; }
+.stats b { font: 500 26px var(--mono); font-variant-numeric: tabular-nums; }
+.stats b small { font-size: 14px; color: var(--muted); }
+.stats span { font-size: 12.5px; color: var(--muted); }
+
+.empty { padding: 30px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; }
+.heat { display: flex; flex-direction: column; gap: 10px; overflow-x: auto; }
+.heatHead, .heatRow { display: grid; grid-template-columns: minmax(180px, 1.3fr) 90px minmax(180px, 1.4fr); gap: 12px; padding: 8px 12px; font-size: 14px; }
+.heatHead { font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding-block: 0; }
+.heatRow { border-radius: 8px; align-items: center; }
+.heatRow small { color: var(--muted); font-size: 11px; }
+.heatGroup { display: flex; flex-direction: column; gap: 4px; }
+.heatLab { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+.side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.insight { margin: 0; padding: 10px 12px; border-left: 3px solid var(--violet); background: rgba(182,147,255,.08); border-radius: 0 8px 8px 0; font-size: 14px; }
+.block { display: flex; flex-direction: column; font-size: 14px; padding-top: 8px; border-top: 1px solid var(--line); }
+.block span { color: var(--muted); font-size: 13px; }
+.feed { display: grid; grid-template-columns: 52px 1fr; gap: 8px; font-size: 13px; }
+.present { width: min(600px, 100%); padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.qrBig { width: min(340px, 80vw); aspect-ratio: 1; border-radius: 12px; background: #fff; }
+
+@media (max-width: 900px) {
+  .grid2 { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stats div { border-bottom: 1px solid var(--line); }
+  .slide { grid-template-columns: 24px minmax(0, 1fr); }
+  .slideAct, .none { grid-column: 2; }
+}
