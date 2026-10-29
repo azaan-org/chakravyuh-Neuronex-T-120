@@ -109,6 +109,17 @@ STUDENT ASKS: ${body.question}`;
     return Response.json({ slides: fallback, source: 'fallback' });
   }
 
+  if (kind === 'coach') {
+    const list = (body.concepts || []).slice(0, 12);
+    const act = list.filter(c => c.status === 'active'), fixed = list.filter(c => c.status === 'fixed'), solid = list.filter(c => c.status === 'solid');
+    const name = (body.name || '').split(' ')[0];
+    const fb = act.length
+      ? `${name ? name + ', y' : 'Y'}ou have ${act.length} concept${act.length > 1 ? 's' : ''} to fix. Start with ${act[0].concept} in the ${act[0].lab} lab: you believe “${act[0].belief}”, and the simulation will show you why that breaks. ${fixed.length ? `You already fixed ${fixed.map(c => c.concept).join(', ')}, nice work.` : ''} ${solid.length ? `${solid.length} concept${solid.length > 1 ? 's are' : ' is'} solid.` : ''}`.replace(/\s+/g, ' ').trim()
+      : `${name ? name + ', n' : 'N'}o open misconceptions right now. ${fixed.length ? `You fixed ${fixed.map(c => c.concept).join(', ')}.` : ''} Try a lab you haven't opened yet to keep mapping what you know.`.replace(/\s+/g, ' ').trim();
+    const text = await gemini({ system: 'You are PulseAI, a warm, direct study coach for an engineering student. In at most 3 short sentences: tell them which misconception to fix first and why, mention one thing they already fixed or know well, and end with one concrete next action. Plain text, no markdown.', prompt: JSON.stringify({ student: name, concepts: list }), maxTokens: 200 });
+    return Response.json({ text: text || fb, source: text ? 'ai' : 'fallback' });
+  }
+
   if (kind === 'insight') {
     const top = (body.top || []).slice(0, 5);
     const fb = top.length

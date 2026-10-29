@@ -69,7 +69,14 @@ export default function LabClient({ labId }) {
     setBusy(false);
   }
 
-  const src = lab.file + (labId === 'iot' ? '' : '?mode=predict');
+  const [src, setSrc] = useState(null);
+  useEffect(() => {
+    // Forward lab settings from the page URL (e.g. /lab/opamp?rf=68000) so the Miner and Studio can deep-link into a state
+    const q = new URLSearchParams(location.search); const fwd = new URLSearchParams();
+    ['v', 'material', 'rin', 'rf', 'level', 'view', 'circuit', 'mode'].forEach(k => q.get(k) && fwd.set(k, q.get(k)));
+    if (!fwd.has('mode') && labId !== 'iot' && !fwd.has('v') && !fwd.has('rf') && !fwd.has('view') && !fwd.has('level')) fwd.set('mode', 'predict');
+    setSrc(lab.file + (fwd.toString() ? '?' + fwd : ''));
+  }, [labId, lab.file]);
 
   return (
     <main className={s.page}>
@@ -83,7 +90,7 @@ export default function LabClient({ labId }) {
         <button className={`btn btn-ghost ${s.chatToggle}`} onClick={() => setChatOpen(o => !o)} aria-expanded={chatOpen}>{chatOpen ? 'Hide' : 'Ask'} PulseAI</button>
       </div>
       <div className={`${s.body} ${chatOpen ? '' : s.full}`}>
-        <iframe ref={frame} src={src} title={lab.title} className={s.frame} allow="autoplay; clipboard-write" />
+        {src && <iframe ref={frame} src={src} title={lab.title} className={s.frame} allow="autoplay; clipboard-write" />}
         {chatOpen && (
           <aside className={s.chat} aria-label="AI tutor">
             <div className={s.chatHead}><span className={s.dot} /> <b>PulseAI tutor</b><span className="chip" style={{ marginLeft: 'auto' }}>sees your live lab</span></div>

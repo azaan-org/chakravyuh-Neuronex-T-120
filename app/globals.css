@@ -37,12 +37,13 @@ h1, h2, h3 { margin: 0; text-wrap: balance; }
 .logo { display: flex; align-items: center; gap: 8px; font: 700 20px var(--display); }
 .logo svg { display: block; }
 .logo b { color: var(--accent); font-weight: 700; }
-.navlinks { display: flex; gap: 4px; }
+.navlinks { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.navlinks a { white-space: nowrap; }
 .navlinks a { padding: 6px 12px; border-radius: 7px; color: var(--muted); font-weight: 500; }
 .navlinks a[aria-current="page"] { color: var(--fg); background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
 .navlinks a:hover { color: var(--fg); }
 .navright { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.lms { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; }
+.lms { display: flex; white-space: nowrap; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 4px 10px; }
 .lms i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; }
 .who { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 99px; padding: 3px 4px 3px 12px; font-size: 13px; cursor: pointer; background: var(--panel); }
 .who .av { width: 26px; height: 26px; border-radius: 50%; background: var(--blue); color: #04121d; display: grid; place-items: center; font-weight: 700; font-size: 12px; }
@@ -70,6 +71,7 @@ input.field:focus, textarea.field:focus { border-color: var(--muted); outline: n
 
 @media (max-width: 720px) {
   .lms { display: none; }
+  .navlinks a { font-size: 13px; }
   .nav .wrap { gap: 10px; }
   .navlinks a { padding: 6px 8px; }
   .logo span.full { display: none; }
@@ -77,3 +79,4 @@ input.field:focus, textarea.field:focus { border-color: var(--muted); outline: n
   .who { padding: 3px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (max-width: 1150px) { .lms { display: none; } }

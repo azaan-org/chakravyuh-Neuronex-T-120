@@ -1,0 +1,44 @@
+.head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+.lead { color: var(--muted); max-width: 62ch; margin: 8px 0 0; }
+.counts { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--panel); }
+.counts div { padding: 10px 16px; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+.counts div:last-child { border-right: 0; }
+.counts b { font: 500 24px var(--mono); }
+.counts span { font-size: 12px; color: var(--muted); }
+.empty { padding: 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.coach { padding: 14px 18px; margin-bottom: 16px; border-color: rgba(182,147,255,.45); background: linear-gradient(90deg, rgba(182,147,255,.1), transparent 70%), var(--panel); }
+.coachTag { display: inline-flex; align-items: center; gap: 8px; font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--violet); }
+.coachTag i { width: 8px; height: 8px; border-radius: 50%; background: var(--violet); box-shadow: 0 0 10px var(--violet); }
+.coach p { margin: 6px 0 0; font-size: 15px; max-width: 90ch; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.mapCard { padding: 12px; overflow: hidden; }
+.map { width: 100%; height: auto; display: block; }
+.node { cursor: pointer; }
+.node:focus { outline: none; }
+.node:focus circle { stroke: #fff; }
+.nl { fill: #dbe5ee; font: 500 12.5px var(--body); }
+.hl { fill: #8495a7; font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.you { fill: #1a1406; font: 700 14px var(--display); }
+.throb { animation: throb 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes throb { 50% { transform: scale(1.18); } }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); padding: 4px 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.fix { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.fixHead { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.fixHead h2 { font: 600 22px var(--body); margin-top: 2px; }
+.belief { border-left: 3px solid var(--coral); background: rgba(255,111,94,.08); padding: 10px 12px; border-radius: 0 8px 8px 0; font-size: 15px; }
+.belief span { display: block; font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--coral); margin-bottom: 2px; }
+.steps { margin: 0; padding: 0; list-style: none; counter-reset: st; display: flex; flex-direction: column; gap: 14px; }
+.steps li { counter-increment: st; position: relative; padding-left: 38px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.steps li::before { content: counter(st); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); display: grid; place-items: center; font: 500 12px var(--mono); }
+.steps p { margin: 0; color: var(--muted); font-size: 14px; }
+.opts { display: flex; flex-direction: column; gap: 6px; align-self: stretch; }
+.opts button { text-align: left; background: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+.opts button:hover:not(:disabled) { border-color: var(--muted); }
+.opts button:disabled { cursor: default; }
+.opts .ok { border-color: var(--ok); background: rgba(95,211,141,.1); }
+.opts .no { border-color: var(--coral); background: rgba(255,111,94,.1); }
+.okT { color: var(--ok) !important; } .noT { color: var(--coral) !important; }
+.next { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+.next button { cursor: pointer; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }

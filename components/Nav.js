@@ -44,14 +44,17 @@ export default function Nav() {
     sync(); window.addEventListener('pulse-progress', sync);
     return () => window.removeEventListener('pulse-progress', sync);
   }, []);
-  const isProf = path.startsWith('/professor');
+  const isProf = path.startsWith('/professor') || path.startsWith('/studio');
   return (
     <nav className="nav">
       <div className="wrap">
         <Link href="/" aria-label="PulseENTC home"><Logo /></Link>
         <div className="navlinks">
-          <Link href="/" aria-current={!isProf ? 'page' : undefined}>Student</Link>
-          <Link href="/professor" aria-current={isProf ? 'page' : undefined}>Professor</Link>
+          <Link href="/" aria-current={path === '/' || path.startsWith('/lab') ? 'page' : undefined}>Labs</Link>
+          <Link href="/miner" aria-current={path.startsWith('/miner') ? 'page' : undefined}>My Mind Map</Link>
+          <Link href="/forum" aria-current={path.startsWith('/forum') ? 'page' : undefined}>Forum</Link>
+          <Link href="/studio" aria-current={path.startsWith('/studio') ? 'page' : undefined}>Lecture Studio</Link>
+          <Link href="/professor" aria-current={path.startsWith('/professor') ? 'page' : undefined}>Professor</Link>
         </div>
         <div className="navright">
           <span className="lms" title="Demo integration"><i />Moodle · Juno sync (demo)</span>

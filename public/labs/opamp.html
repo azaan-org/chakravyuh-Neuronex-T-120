@@ -349,7 +349,7 @@ window.addEventListener('message', e => {
   if (d.type === 'startPredict') setMode('predict');
   if (d.type === 'set') { if (d.rin && RIN.includes(d.rin)) st.rin = RIN.indexOf(d.rin); if (d.rf && RF.includes(d.rf)) st.rf = RF.indexOf(d.rf); if (d.vin) st.vin = d.vin; update(); }
 });
-try { const p = new URLSearchParams(location.search); if (p.get('mode') === 'predict') setTimeout(() => setMode('predict'), 0); } catch (e) {}
+try { const p = new URLSearchParams(location.search); const ri = RIN.indexOf(+p.get('rin')), rf = RF.indexOf(+p.get('rf')); if (ri >= 0) st.rin = ri; if (rf >= 0) st.rf = rf; if (p.get('mode') === 'predict') setTimeout(() => setMode('predict'), 0); } catch (e) {}
 
 update();
 function loop() { phase += 0.02; drawScope(); requestAnimationFrame(loop); }

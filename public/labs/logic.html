@@ -324,7 +324,7 @@ function setView(v) {
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setView(b.dataset.v));
 window.addEventListener('message', e => { const d = e.data || {}; if (d.type === 'startPredict') { setView('explore'); qi = 0; results = []; showQ(); } });
 renderExplorer();
-try { if (new URLSearchParams(location.search).get('mode') === 'predict') showQ(); } catch (e) {}
+try { const p = new URLSearchParams(location.search); if (p.get('view') === 'build' || p.get('view') === 'blitz') setView(p.get('view')); else if (p.get('mode') === 'predict') showQ(); const c = +p.get('circuit'); if (c && PUZZLES.find(q => q.id === c)) { bs.p = PUZZLES.find(q => q.id === c); if (p.get('view') === 'build') renderBuild(); } } catch (e) {}
 })();
 </script>
 </body></html>
